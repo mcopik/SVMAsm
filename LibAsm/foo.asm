@@ -18,10 +18,10 @@ foo:
     pop     ebx
     add     ebx,_GLOBAL_OFFSET_TABLE_+$$-.get_GOT wrt ..gotpc
 
-	mov	edx,[ebp+8]						;edx = program parameter
-	xor 	eax,eax						;eax=0
-	mov	al,byte [ebx+str wrt ..gotoff]	;al='A'
-	mov 	[edx],eax					;*edx = 'A'
+	mov		edx,[ebp+8]						;edx = program parameter
+	xor 	eax,eax							;eax=0
+	mov		al,byte [ebx+str wrt ..gotoff]	;al='A'
+	mov 	[edx],eax						;*edx = 'A'
 	mov     eax,5
     mov     esp,ebp
     pop     ebp
