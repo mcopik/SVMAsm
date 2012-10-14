@@ -11,6 +11,15 @@
 #include <cassert>
 #include <iostream>
 
+#define ASSERT(left,operator,right) \
+{ if(!((left) operator (right))) { 	\
+	std::cerr << "ASSERT FAILED: " << \
+	#left << #operator << #right << 	\
+	" @ " << __FILE__ << " (" << __LINE__	\
+	<< "). " << #left << "=" << (left) <<	\
+	"; " << #right << "=" << (right) <<		\
+	std::endl; } }
+
 template<class T>
 struct Matrix {
 public:
@@ -33,6 +42,7 @@ public:
 	 */
 	Matrix(int _rows,int _cols):rows(_rows),cols(_cols),data(new T[_rows*_cols]){
 
+		std::cout << "Create m" << std::endl;
 	}
 	/**
 	 * Copy constructor
@@ -40,12 +50,14 @@ public:
 	Matrix(const Matrix & m):rows(m.rows),cols(m.cols),data(new T[m.rows*m.rows]) {
 		for(int i = 0;i < rows*cols;++i)
 			data[i] = m.data[i];
+		std::cout << "Create m3" << std::endl;
 	}
 	/**
 	 * Move constructor
 	 */
 	Matrix(Matrix && m):rows(m.rows),cols(m.cols),data(m.data) {
 		m.data = nullptr;
+		std::cout << "Mat move con" << std::endl;
 	}
 	/**
 	 * Assignment move operator.
@@ -53,6 +65,7 @@ public:
 	Matrix & operator=(Matrix && m){
 		std::swap(m.tab,this->data);
 		m.data = nullptr;
+		std::cout << "Move assignment" << std::endl;
 		return *this;
 	}
 	/**
@@ -65,6 +78,7 @@ public:
 		data = new T[rows*cols];
 		for(int i = 0;i < rows*cols;++i)
 			data[i] = m.data[i];
+		std::cout << " assignment" << std::endl;
 		return *this;
 	}
 	/**
@@ -72,7 +86,8 @@ public:
 	 * Gives access to elements in matrix(R/W).
 	 */
 	T & operator() (unsigned row,unsigned col) {
-		assert(row < rows && col < cols);
+		ASSERT(row,<,rows);
+		ASSERT(col,<,cols);
 		return data[row*cols+col];
 	}
 	/**
@@ -80,7 +95,8 @@ public:
 	 * Gives access to elements in matrix(read only).
 	 */
 	T operator() (unsigned row,unsigned col) const{
-		assert(row < rows && col < cols);
+		ASSERT(row,<,rows);
+		ASSERT(col,<,cols);
 		return data[row*cols+col];
 	}
 	/**
@@ -121,7 +137,16 @@ public:
 		}
 		return std::move(retval);
 	}
+	Matrix<T> multiplyEachByEach(Matrix<T> & arg) {
+		Matrix<T> retval(rows,rows);
+		for(unsigned int i = 0;i < rows;++i) {
+			for(unsigned int j = 0;j < rows;++j) {
+				retval(i,j) = this->operator()(i,j)*arg(i,j);
+			}
+		}
+		return std::move(retval);
+	}
 };
 
-
+#undef ASSERT
 #endif /* MATRIX_H_ */

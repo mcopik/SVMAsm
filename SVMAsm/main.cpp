@@ -16,8 +16,8 @@ extern void testSharedLibrary(const char*,int,const char*);
 extern void testGaussianKernel();
 int main()
 {
-    testSharedLibrary("./libasm.so",RTLD_LAZY,"foo");
-    testSharedLibrary("./libcpp.so",RTLD_LAZY,"foo");
+    //testSharedLibrary("./libasm.so",RTLD_LAZY,"foo");
+    //testSharedLibrary("./libcpp.so",RTLD_LAZY,"foo");
     testGaussianKernel();
     return 0;
 }

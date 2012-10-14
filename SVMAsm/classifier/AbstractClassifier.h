@@ -11,14 +11,13 @@
 #include "../data/TrainedModel.h"
 #include "../kernel/AbstractKernel.h"
 
-template<class T>
+template<class T,class U>
 class AbstractClassifier {
 public:
 	virtual void train(TrainData<T> &,AbstractKernel<T> &,double) = 0;
 	virtual void predict(TrainData<T> &) = 0;
 	virtual ~AbstractClassifier(){}
-protected:
-	TrainedModel<T> * model = nullptr;
+	TrainedModel<T,U> * model = nullptr;
 };
 
 
