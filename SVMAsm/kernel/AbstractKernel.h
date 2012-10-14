@@ -7,13 +7,14 @@
 
 #ifndef ABSTRACTKERNEL_H_
 #define ABSTRACTKERNEL_H_
+#include "../data/Matrix.h"
+#include "../data/Vector.h"
 
-class Matrix;
-
+template<class T>
 class AbstractKernel {
 public:
-	virtual Matrix * cacheKernel(Matrix & X,Matrix & Y,double sigma) = 0;
-	virtual double kernelFunction(int * x,int * y,int size,double sigma) = 0;
+	virtual Matrix<T> cacheKernel(Matrix<T> & X,double sigma) = 0;
+	virtual double kernelFunction(T * x,T * y,int size,double sigma) = 0;
 };
 
 

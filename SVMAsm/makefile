@@ -1,5 +1,5 @@
 CC=g++
-SOURCES=main.cpp test.cpp kernel/GaussianKernel.cpp
+SOURCES=main.cpp test/test.cpp
 OBJECTS=$(patsubst %.cpp,%.o,$(SOURCES))
 FLAGS=-Wl
 LDFLAGS=-ldl
