@@ -15,6 +15,20 @@
 #include "../data/Matrix.h"
 #include <random>
 #include <cmath>
+#include <fstream>
+#include <cstdio>
+template<class T>
+Matrix<T> loadMatrix2(std::ifstream & file) {
+	unsigned int rows,cols;
+	file >> rows >> cols;
+	Matrix<T> X(rows,cols);
+	for(unsigned int i = 0;i < rows;++i) {
+		for(unsigned int j = 0;j < cols;++j) {
+			file >> X(i,j);
+		}
+	}
+	return std::move(X);
+}
 
 template<class T,class U>
 class SMOClassifier: public AbstractClassifier<T,U> {
@@ -30,34 +44,38 @@ public:
 		std::cout << "Training model: " << std::endl;
 		std::cout << "Number of examples: " <<  model->X.rows << std::endl;
 		std::cout << "Number of features: " <<  model->X.cols << std::endl;
+
+
+
 		int maxPasses = 5;
 		int pass = 0;
 		int C = 1;
 		int numChangedAlphas = 0;
-		double error = 10e-3;
+		U error = 1e-3;
 		U temp;
 		std::random_device rd;
 		std::mt19937 gen(rd());
 		std::uniform_real_distribution<float> randDistr;
 		unsigned int j = 0;
-		int alpha_i_old = 0;
-		int alpha_j_old = 0;
+		U alpha_i_old = 0;
+		U alpha_j_old = 0;
 		U L,H;
 		U eta;
 		U b1,b2;
+		int counter =0;
 		while(pass < maxPasses) {
 			numChangedAlphas = 0;
 			//for each training example
 			for(unsigned int i = 0;i < model->X.rows;++i) {
 				E(i) = computeE(i);
-				std::cout << "E(" << i << ") " << E(i) << std::endl;
+
 				temp = E(i)*model->Y(i);
-				if( (temp < -error && model->alphas(i) < C) ||
+				if( (temp < (error*-1) && model->alphas(i) < C) ||
 						(temp > error && model->alphas(i) > 0) ) {
-		            j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));//randDistr(gen));
+
+					j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));
 		            while (j == i)
-			            j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));// randDistr(gen));
-		            std::cout << i << " " << j << std::endl;
+			            j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));
 		            E(j) = computeE(j);
 		            alpha_i_old = model->alphas(i);
 		            alpha_j_old = model->alphas(j);
@@ -70,14 +88,15 @@ public:
 		                L = max(0, model->alphas(j) - model->alphas(i));
 		                H = min(C, C + model->alphas(j) - model->alphas(i));
 		            }
-		            std::cout << "L " << L << "H " << H << std::endl;
-		            if (L == H)
+		            if (L == H){
 		                continue;
+		            }
 
 		            eta = 2 * model->cachedKernel(i,j) - model->cachedKernel(i,i)
 		            		- model->cachedKernel(j,j);
-					if (eta >= 0)
+					if (eta >= 0){
 						continue;
+					}
 
 		            model->alphas(j) = model->alphas(j) - (model->Y(j) * (E(i) - E(j))) / eta;
 
@@ -91,7 +110,6 @@ public:
 
 					model->alphas(i) = model->alphas(i) + model->Y(i)*model->Y(j) \
 						*(alpha_j_old - model->alphas(j));
-
 					b1 = model->b - E(i) \
 						- model->Y(i) * (model->alphas(i) - alpha_i_old) *  model->cachedKernel(i,j) \
 						- model->Y(j) * (model->alphas(j) - alpha_j_old) *  model->cachedKernel(i,j);
@@ -102,15 +120,13 @@ public:
 					if (0 < model->alphas(i) && model->alphas(i) < C)
 					   model->b = b1;
 					else if (0 < model->alphas(j) && model->alphas(j) < C)
-					   model->b = b2;
+						model->b = b2;
 					else
 					   model->b = (b1+b2)/2;
 
 					++numChangedAlphas;
-					std::cout << "b: " << model->b << std::endl;
 				}
 			}
-
 			pass = numChangedAlphas == 0 ? pass + 1 : 0;
 		}
 		/**
