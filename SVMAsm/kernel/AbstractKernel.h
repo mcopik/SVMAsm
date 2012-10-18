@@ -15,6 +15,7 @@ class AbstractKernel {
 public:
 	virtual Matrix<T> cacheKernel(Matrix<T> & X,double sigma) = 0;
 	virtual double kernelFunction(T * x,T * y,int size,double sigma) = 0;
+	virtual double kernelFunction(T x,T y,double sigma) = 0;
 };
 
 

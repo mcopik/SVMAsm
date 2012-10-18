@@ -27,6 +27,15 @@ public:
 	Vector<U> * w = nullptr;
 	/**
 	 * Constructor.
+	 */
+	TrainedModel(Matrix<T> & _x,Vector<T> & _y)
+		:X(_x),Y(_y),alphas(_x.rows) {
+		//just to shut up Valgrind
+		for(unsigned int i = 0;i < X.rows;++i)
+			alphas(i) = 0;
+	}
+	/**
+	 * Constructor.
 	 * Matrix with cached kernel values is copied.
 	 */
 	TrainedModel(Matrix<T> & _x,Vector<T> & _y,Matrix<U> & kernel)

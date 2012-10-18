@@ -98,17 +98,17 @@ void testGaussianKernel() {
     		"../test/gaussianKernelTestResult",0.002);
     testGaussianCached<double>("../test/gaussianKernelTestX",
     		"../test/gaussianKernelTestResult",10e-10);
-    std::ifstream file("../test/gaussianKernelTest3Y");
+    std::ifstream file("../test/gaussianKernelTest2Y");
     Vector<float> y = loadVector<float>(file);
     file.close();
-    file.open("../test/gaussianKernelTest3X");
+    file.open("../test/gaussianKernelTest2X");
     Matrix<float> X = loadMatrix<float>(file);
     file.close();
     Matrix<float> d = X.multiplyByTranspose();
-    //TrainData<float> data(X,y);
-    //SMOClassifier<float,float> classifier;
-    //classifier.train(data,kernel,0.1);
-    //std::cout << classifier.model->b << std::endl;
+    TrainData<float> data(X,y);
+    SMOClassifier<float,float> classifier;
+    classifier.train(data,kernel,0.1);
+    std::cout << classifier.model->b << std::endl;
     //for(int i = 0;i < classifier.model->alphas.size;++i)
       //  std::cout << classifier.model->alphas(i) << std::endl;
 }

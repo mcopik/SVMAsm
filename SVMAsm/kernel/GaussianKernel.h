@@ -47,6 +47,11 @@ public:
 		sum /= 2*pow(sigma,2.0);
 		return exp(sum);
 	}
+	double kernelFunction(T x,T y,double sigma) {
+		double sum = -pow(x-y,2.0);
+		sum /= 2*pow(sigma,2.0);
+		return exp(sum);
+	}
 };
 
 

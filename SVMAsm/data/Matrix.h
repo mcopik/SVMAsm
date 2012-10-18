@@ -36,7 +36,8 @@ public:
 	 * i - row
 	 * j - column
 	 */
-	T * data;
+	T * data = nullptr;
+	Matrix(){}
 	/**
 	 * Constructor.
 	 */
