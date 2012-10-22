@@ -14,7 +14,7 @@
 template<class T,class U>
 class AbstractClassifier {
 public:
-	virtual void train(TrainData<T> &,AbstractKernel<T> &,double) = 0;
+	virtual void train(TrainData<T> &,AbstractKernel<T> &,double,bool) = 0;
 	virtual void predict(TrainData<T> &) = 0;
 	virtual ~AbstractClassifier(){}
 	TrainedModel<T,U> * model = nullptr;

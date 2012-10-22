@@ -132,9 +132,10 @@ public:
 			for(unsigned int j = 0;j < rows;++j) {
 				retval(i,j) = 0;
 				for(unsigned int k = 0;k < cols;++k) {
-						retval(i,j) += this->operator()(i,k)*this->operator()(j,k);
+						retval.data[i*rows+j] += data[i*cols+k]*data[j*cols+k];//this->operator()(i,k)*this->operator()(j,k);
 				}
 			}
+			std::cout << "ROW: " << i << std::endl;
 		}
 		return std::move(retval);
 	}
