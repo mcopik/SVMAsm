@@ -16,6 +16,7 @@ class AbstractClassifier {
 public:
 	virtual void train(TrainData<T> &,AbstractKernel<T> &,double,bool) = 0;
 	virtual void predict(TrainData<T> &) = 0;
+	virtual void setCachedKernel(Matrix<U> &) = 0;
 	virtual ~AbstractClassifier(){}
 	TrainedModel<T,U> * model = nullptr;
 };

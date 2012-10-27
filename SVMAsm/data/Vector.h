@@ -31,7 +31,7 @@ public:
 	/**
 	 * Constructor.
 	 */
-	Vector(int _size):size(_size),data(new T[_size]) {
+	Vector(int _size):size(_size),data(new T[_size]()) {
 		//don't want to do anything!
 		//std::cout << "Create v" << std::endl;
 	}

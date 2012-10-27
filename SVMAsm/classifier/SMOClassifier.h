@@ -41,10 +41,12 @@ public:
 	AbstractKernel<T> * kernel;
 	int counterKernel = 0;
 	double sigma = 0;
+	Matrix<U> * cache = nullptr;
 	/**
 	 * Trains model on given data.
 	 */
 	void train(TrainData<T> & train,AbstractKernel<T> & _kernel,double _sigma,bool cacheKernel = false) {
+
 		if(cacheKernel) {
 			model = new TrainedModel<T,U>(train.X,train.Y,std::move(_kernel.cacheKernel(train.X,_sigma)));
 		}
@@ -52,28 +54,32 @@ public:
 			model = new TrainedModel<T,U>(train.X,train.Y);
 			sigma = _sigma;
 			kernel = &_kernel;
-			model->cachedKernel.rows = train.X.rows;
-			model->cachedKernel.cols = train.X.rows;
-			model->cachedKernel.data = new U[train.X.rows*train.X.rows]();
+			if(cache == nullptr) {
+				model->cachedKernel.rows = train.X.rows;
+				model->cachedKernel.cols = train.X.rows;
+				model->cachedKernel.data = new U[train.X.rows*train.X.rows]();
+			}
 		}
-		Vector<U> E(model->X.rows);
-		//for(int i = 0;i < model->X.rows;++i)
-		//	E(i) = 0;
 		std::cout << "Training model: " << std::endl;
 		std::cout << "Number of examples: " <<  model->X.rows << std::endl;
 		std::cout << "Number of features: " <<  model->X.cols << std::endl;
 
-
-
+		/**
+		 * Error cache.
+		 */
+		Vector<U> E(model->X.rows);
 		int maxPasses = 5;
 		int pass = 0;
-		U C = 1;
+		U C = 0.1;
 		int numChangedAlphas = 0;
 		U error = 1e-3;
-		U temp;
+		/**
+		 * C++11 random
+		 */
 		std::random_device rd;
 		std::mt19937 gen(rd());
 		std::uniform_real_distribution<float> randDistr;
+
 		unsigned int j = 0;
 		U alpha_i_old = 0;
 		U alpha_j_old = 0;
@@ -86,34 +92,65 @@ public:
 		while(pass < maxPasses) {
 			numChangedAlphas = 0;
 			//for each training example
-			for(unsigned int i = 0;i < model->X.rows;++i) {
-				t=clock();
+			if(TIME_OUTPUT)
 				c = clock();
-				E(i) = computeE(i);
+			for(unsigned int i = 0;i < model->X.rows;++i) {
+
+				if(TIME_OUTPUT)
+					t=clock();
+				if(model->alphas(i) == 0 || model->alphas(i) == C) {
+					E(i) = 0;
+					for(unsigned int k = 0;k < model->alphas.size;++k)
+						if(model->alphas(k) != 0)
+							E(i) += model->alphas(k)*model->Y(k)*computeKernel(k,i);
+					E(i) = E(i) - model->Y(i)+ model->b;
+				}
 				if(TIME_OUTPUT)
 					std::cout << "Compute E(i): " << ((double)(clock()-t))/CLOCKS_PER_SEC << std::endl;
-				temp = E(i)*model->Y(i);
+
+				U temp = E(i)*model->Y(i);
 				if( (temp < (error*-1) && model->alphas(i) < C) ||
 						(temp > error && model->alphas(i) > 0) ) {
-					t=clock();
+					if(TIME_OUTPUT)
+						t=clock();
 					kernelVal = computeKernel(i,j);
 					if(TIME_OUTPUT)
 						std::cout << "Compute kernelVal: " << ((double)(clock()-t))/CLOCKS_PER_SEC << std::endl;
-					j = floor(model->X.rows *randDistr(gen));//(((double)rand()) / (RAND_MAX)));//
+
+					/**
+					 * Choose j.
+					 */
+					j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));//randDistr(gen));
 		            while (j == i)
-			            j = floor(model->X.rows *randDistr(gen));//(((double)rand()) / (RAND_MAX)));//
-		            //E(j) = computeE(j,kernel,sigma);
-		            t=clock();
-		            E(j) = computeE(j);
+			            j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));//randDistr(gen));
+
+					if(TIME_OUTPUT)
+						t=clock();
+					/**
+					 * Compute error on j if necessary.
+					 */
+					if(model->alphas(j) == 0 || model->alphas(j) == C) {
+						E(j) = model->b-model->Y(j);
+						for(unsigned int k = 0;k < model->alphas.size;++k)
+							if(model->alphas(k) > 0)
+								E(j) += model->alphas(k)*model->Y(k)*computeKernel(k,j);
+					}
 		            if(TIME_OUTPUT)
-					std::cout << "Compute E(j): " << ((double)(clock()-t))/CLOCKS_PER_SEC << std::endl;
+		            	std::cout << "Compute E(j): " << ((double)(clock()-t))/CLOCKS_PER_SEC << std::endl;
+
 		            alpha_i_old = model->alphas(i);
 		            alpha_j_old = model->alphas(j);
 
+		            /**
+		             * Equation (14)
+		             */
 		            if(model->Y(i) == model->Y(j)) {
 		                L = max(0, model->alphas(j) + model->alphas(i) - C);
 		                H = min(C, model->alphas(j) + model->alphas(i));
 		            }
+		            /**
+		             * Equation (13)
+		             */
 		            else {
 		                L = max(0, model->alphas(j) - model->alphas(i));
 		                H = min(C, C + model->alphas(j) - model->alphas(i));
@@ -121,20 +158,24 @@ public:
 		            if (L == H){
 		                continue;
 		            }
-
-		            //eta = 2 * model->cachedKernel(i,j) - model->cachedKernel(i,i)
-		            	//	- model->cachedKernel(j,j);
-		            t=clock();
+		            /**
+		             * Equation (15)
+		             */
+					if(TIME_OUTPUT)
+						t=clock();
 		            eta = 2 * kernelVal - computeKernel(i,i)
 				            		- computeKernel(j,j);
-		            if(TIME_OUTPUT)
-					std::cout << "Compute eta: " << ((double)(clock()-t))/CLOCKS_PER_SEC << std::endl;
-					if (eta >= 0){
+		            if (eta >= 0)
 						continue;
-					}
-
+		            if(TIME_OUTPUT)
+		            	std::cout << "Compute eta: " << ((double)(clock()-t))/CLOCKS_PER_SEC << std::endl;
+		            /**
+		             * Equation(16)
+		             */
 		            model->alphas(j) = model->alphas(j) - (model->Y(j) * (E(i) - E(j))) / eta;
-
+		            /**
+		             * Equation(17)
+		             */
 		            model->alphas(j) = min (H, model->alphas(j));
 		            model->alphas(j) = max (L, model->alphas(j));
 
@@ -142,37 +183,47 @@ public:
 		                model->alphas(j) = alpha_j_old;
 		                continue;
 		            }
-
+		            /**
+		             * Equation(18)
+		             */
 					model->alphas(i) = model->alphas(i) + model->Y(i)*model->Y(j) \
 						*(alpha_j_old - model->alphas(j));
-/*
-					b1 = model->b - E(i) \
-						- model->Y(i) * (model->alphas(i) - alpha_i_old) *  model->cachedKernel(i,j) \
-						- model->Y(j) * (model->alphas(j) - alpha_j_old) *  model->cachedKernel(i,j);
-					b2 = model->b - E(j) \
-						- model->Y(i) * (model->alphas(i) - alpha_i_old) *  model->cachedKernel(i,j) \
-						- model->Y(j) * (model->alphas(j) - alpha_j_old) *  model->cachedKernel(j,j);
-*/
-
+					/**
+					 * Equation(20)
+					 */
 					b1 = model->b - E(i) \
 							- model->Y(i) * (model->alphas(i) - alpha_i_old) *  kernelVal \
 							- model->Y(j) * (model->alphas(j) - alpha_j_old) *  kernelVal;
+					/**
+					 * Equation(21)
+					 */
 					b2 = model->b - E(j) \
 							- model->Y(i) * (model->alphas(i) - alpha_i_old) *  kernelVal- \
 							- model->Y(j) * (model->alphas(j) - alpha_j_old) *  computeKernel(j,j);
-
+					U old_bias = model->b;
 					if (0 < model->alphas(i) && model->alphas(i) < C)
 					   model->b = b1;
 					else if (0 < model->alphas(j) && model->alphas(j) < C)
 						model->b = b2;
 					else
 					   model->b = (b1+b2)/2;
+					/**
+					 * Update error cache.
+					 */
+					for (unsigned int k = 0; k < E.size; ++k) {
+						if (0 !=  model->alphas(k) && C != model->alphas(k)){
+							E(k) += model->Y(i) * (model->alphas(i) - alpha_i_old) * computeKernel( i,k)
+							+ model->Y(j) * (model->alphas(j) - alpha_j_old) * computeKernel(j,k)+ (model->b - old_bias);
+						}
+					}
 					++numChangedAlphas;
 					if(TIME_OUTPUT)
 						std::cout << "Loop end: " << ((double)(clock()-c))/CLOCKS_PER_SEC << std::endl;
 				}
 			}
 			pass = numChangedAlphas == 0 ? pass + 1 : 0;
+			if(TIME_OUTPUT)
+				std::cout << "loop time: " << ((double)(clock()-c))/CLOCKS_PER_SEC << std::endl;
 			if(DEBUG_OUTPUT) {
 				std::cout << "numChanged: " << numChangedAlphas << std::endl;
 				std::cout << "PASS: " << pass << std::endl;
@@ -185,6 +236,9 @@ public:
 	 */
 	void predict(TrainData<T> & test) {
 
+	}
+	void setCachedKernel(Matrix<U> & _cache) {
+		cache = &_cache;
 	}
 	/**
 	 * Destructor.
@@ -238,6 +292,9 @@ private:
 		return arg1 >= arg2 ? arg2 : arg1;
 	}
 	U computeKernel(int a,int b) {
+		if(cache != nullptr)
+			return (*cache)(a,b);
+
 		//only for gaussian!
 		if(a == b)
 			return 1;

@@ -43,7 +43,6 @@ public:
 	 */
 	Matrix(int _rows,int _cols):rows(_rows),cols(_cols),data(new T[_rows*_cols]){
 
-		std::cout << "Create m" << std::endl;
 	}
 	/**
 	 * Copy constructor
@@ -51,14 +50,12 @@ public:
 	Matrix(const Matrix & m):rows(m.rows),cols(m.cols),data(new T[m.rows*m.rows]) {
 		for(int i = 0;i < rows*cols;++i)
 			data[i] = m.data[i];
-		std::cout << "Create m3" << std::endl;
 	}
 	/**
 	 * Move constructor
 	 */
 	Matrix(Matrix && m):rows(m.rows),cols(m.cols),data(m.data) {
 		m.data = nullptr;
-		std::cout << "Mat move con" << std::endl;
 	}
 	/**
 	 * Assignment move operator.
@@ -66,7 +63,6 @@ public:
 	Matrix & operator=(Matrix && m){
 		std::swap(m.tab,this->data);
 		m.data = nullptr;
-		std::cout << "Move assignment" << std::endl;
 		return *this;
 	}
 	/**
@@ -79,7 +75,6 @@ public:
 		data = new T[rows*cols];
 		for(int i = 0;i < rows*cols;++i)
 			data[i] = m.data[i];
-		std::cout << " assignment" << std::endl;
 		return *this;
 	}
 	/**
@@ -135,7 +130,6 @@ public:
 						retval.data[i*rows+j] += data[i*cols+k]*data[j*cols+k];//this->operator()(i,k)*this->operator()(j,k);
 				}
 			}
-			std::cout << "ROW: " << i << std::endl;
 		}
 		return std::move(retval);
 	}
