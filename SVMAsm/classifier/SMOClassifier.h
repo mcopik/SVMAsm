@@ -234,8 +234,35 @@ public:
 	/**
 	 * Predicts values on test data.
 	 */
-	void predict(TrainData<T> & test) {
+	Vector<T> predict(TrainData<T> & test,Matrix<T> & kernel) {
+		Vector<T> predicts(test.X.rows);
+		U E;
+		/*
+		for(int i = 0;i < test.X.rows;++i) {
+			E = 0;
+			for(unsigned int k = 0;k < model->alphas.size;++k)
+				if(model->alphas(k) != 0)
+					E += model->alphas(k)*model->Y(k)*kernel(i,k);
+			//E = E - model->Y(i)+ model->b;
+			if(E >= 0) {
+				predicts(i) = 1;
+			}
+			else {
+				predicts(i) = 0;
+			}
+		}*/
 
+		for(int i = 0;i < test.X.rows;++i) {
+			for(unsigned int k = 0;k < model->alphas.size;++k)
+				E += model->alphas(k)*test.X(i,k) + model->b;
+			if(E >= 0) {
+				predicts(i) = 1;
+			}
+			else {
+				predicts(i) = 0;
+			}
+		}
+		return predicts;
 	}
 	void setCachedKernel(Matrix<U> & _cache) {
 		cache = &_cache;

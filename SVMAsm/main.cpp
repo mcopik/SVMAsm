@@ -13,12 +13,14 @@
 #include "kernel/GaussianKernel.h"
 
 extern void testSharedLibrary(const char*,int,const char*);
-extern void testGaussianKernel();
+extern void testSMO();
+extern void testThreads();
 int main()
 {
-    //testSharedLibrary("./libasm.so",RTLD_LAZY,"foo");
-    //testSharedLibrary("./libcpp.so",RTLD_LAZY,"foo");
-    testGaussianKernel();
+    testSharedLibrary("./libasm.so",RTLD_LAZY,"foo");
+    testSharedLibrary("./libcpp.so",RTLD_LAZY,"foo");
+    testSMO();
+    //testThreads();
     return 0;
 }
 

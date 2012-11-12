@@ -122,6 +122,8 @@ public:
 	 * Multiply matrix by its own transposed matrix.
 	 */
 	Matrix<T> multiplyByTranspose() {
+		///TODO:
+		///optimize - output matrix is symetric!
 		Matrix<T> retval(rows,rows);
 		for(unsigned int i = 0;i < rows;++i) {
 			for(unsigned int j = 0;j < rows;++j) {

@@ -5,13 +5,16 @@
  *      Author: mcopik
  */
 #include <cassert>
-#include <dlfcn.h>
 #include <cmath>
 #include <iostream>
 #include <fstream>
+#include <dlfcn.h>
+#include <pthread.h>
 #include "../kernel/GaussianKernel.h"
 #include "../kernel/AbstractKernel.h"
 #include "../classifier/SMOClassifier.h"
+
+pthread_t threadID[2];
 
 typedef unsigned int (*function)(char*);
 #define ASSERT(left,operator,right) \
@@ -88,7 +91,7 @@ void testSharedLibrary(const char * path,int type,const char* func) {
     dlclose(handle);
 }
 
-void testGaussianKernel() {
+void testSMO() {
     GaussianKernel<float> kernel;
     float a[] = {1, 2, 1};
     float b[] = {0, 4, -1};
@@ -108,13 +111,58 @@ void testGaussianKernel() {
     file.open("../test/data");
     Matrix<float> Z = loadMatrix<float>(file);
     file.close();
-    //Matrix<float> d = X.multiplyByTranspose();
+    file.open("../test/gaussianKernelTest3Xtest");
+    Matrix<float> Xtest = loadMatrix<float>(file);
+    file.close();
+    file.open("../test/gaussianKernelTest3Ytest");
+    Vector<float> Ytest = loadVector<float>(file);
+    file.close();
+    file.open("../test/gaussianKernelTest3TestKernel");
+    Matrix<float> kernelTest = loadMatrix<float>(file);
+    file.close();
+    std::cout << "X " << Xtest.rows << " " << Xtest.cols;
+    std::cout << "Y " << Ytest.size;
+    std::cout << "Kernel " << kernelTest.rows << " " << kernelTest.cols;
     TrainData<float> data(X,y);
     SMOClassifier<float,float> classifier;
     classifier.setCachedKernel(Z);
     classifier.train(data,kernel,0.1);
+    TrainData<float> test(Xtest,Ytest);
+    Vector<float> predicts = classifier.predict(test,kernelTest);
+    int counter = 0;
+    for(int i = 0;i < test.Y.size;++i) {
+    	if(predicts(i) == Ytest(i))
+    		counter++;
+    }
+    std::cout << ((float)counter)/predicts.size << std::endl;
     std::cout << "final b: " << classifier.model->b << std::endl;
-    //for(int i = 0;i < classifier.model->alphas.size;++i)
-      //  std::cout << classifier.model->alphas(i) << std::endl;*/
 }
+
+void * thread(void * arg) {
+	pthread_t id = pthread_self();
+
+	for(unsigned long int i = 0;i < (0xFFFFFFFF);++i);
+	if(pthread_equal(id,threadID[0])) {
+		*((int*)arg) = 1;
+	}
+	else {
+		*((int*)arg) = 2;
+	}
+	pthread_exit(0);
+}
+
+void testThreads() {
+	int results[] = {0,0};
+	void * ret[2];
+	for(int i = 0;i < 2;++i) {
+		pthread_create(&(threadID[i]),NULL,&thread,&results[i]);
+	}
+	pthread_join(threadID[0],(void**)&ret[0]);
+	pthread_join(threadID[1],(void**)&ret[1]);
+	for(int i = 0;i < 2;++i) {
+		std::cout << "Thread " << i << " result " <<
+				results[i] <<  std::endl;
+	}
+}
+
 #undef ASSERT

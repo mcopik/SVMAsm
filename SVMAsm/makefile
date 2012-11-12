@@ -2,7 +2,7 @@ CC=g++
 SOURCES=main.cpp test/test.cpp
 OBJECTS=$(patsubst %.cpp,%.o,$(SOURCES))
 FLAGS=-Wl
-LDFLAGS=-ldl
+LDFLAGS=-ldl -pthread
 CFLAGS=-g -Wall -m32 -std=c++11
 OUTPUT=../bin/svmasm
 all:	$(OUTPUT)
