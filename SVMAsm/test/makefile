@@ -1,17 +1,23 @@
 CC=g++
-SOURCES=AllTests.cpp
+SOURCES=kernelTest.cpp AllTests.cpp
 OBJECTS=$(patsubst %.cpp,%.o,$(SOURCES))
-FLAGS=-Wl
-LDFLAGS=-ldl -pthread #../contrib/gtest.a #../contrib/gtest_main.a
-CFLAGS=-g -Wall -m32 -std=c++11  -I../contrib -I..
+LDFLAGS=-ldl -pthread
+CFLAGS=-g -Wall -Wextra -std=c++11
+INCLUDE=-I../contrib -I../src
 OUTPUT=tests
-all:	$(OUTPUT)
+GTEST_DIR=../contrib
+GTEST_SOURCE=gtest/gtest-all.cc
+GTEST_LINK=gtest-all.o
+all: $(GTEST_LINK) $(OUTPUT) 
 
 $(OUTPUT) : $(OBJECTS)
-	$(CC) -g -m32 -Wall $(LDFLAGS) -o $(OUTPUT) $(OBJECTS) ../contrib/gtest.a
+	$(CC) -g -m32 -Wall $(INCLUDE) $(LDFLAGS) -o $(OUTPUT) $(OBJECTS) $(GTEST_LINK)
+	
+$(GTEST_LINK) :
+	$(CC) -lpthread -c $(GTEST_DIR)/$(GTEST_SOURCE) -o $@
 
 .cpp.o:
-	$(CC) $(CFLAGS) ../contrib/gtest.a -c $< -o $@
+	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
 clean:
 	rm -rf $(OBJECTS);
