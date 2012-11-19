@@ -35,7 +35,8 @@ int main()
     file.close();
     TrainData<float> data(X,y);
     SMOClassifier<float,float> classifier;
-    classifier.train(data,kernel,0.1,true);
+    classifier.train(data,kernel,true);
+    std::cout << "b: " << classifier.model->b << std::endl;
     return 0;
 }
 

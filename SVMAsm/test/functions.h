@@ -7,9 +7,15 @@
 
 #ifndef FUNCTIONS_H_
 #define FUNCTIONS_H_
+#include <fstream>
+#include "../src/data/Matrix.h"
+#include "../src/data/Vector.h"
+#include "gtest/gtest.h"
 
 template<class T>
-Matrix<T> loadMatrix(std::ifstream & file) {
+Matrix<T> loadMatrix(const char * path) {
+	std::ifstream file(path);
+	EXPECT_EQ(file.is_open(),true);
 	unsigned int rows,cols;
 	file >> rows >> cols;
 	Matrix<T> X(rows,cols);
@@ -18,17 +24,21 @@ Matrix<T> loadMatrix(std::ifstream & file) {
 			file >> X(i,j);
 		}
 	}
+	file.close();
 	return std::move(X);
 }
 
 template<class T>
-Vector<T> loadVector(std::ifstream & file) {
+Vector<T> loadVector(const char * path) {
+	std::ifstream file(path);
+	EXPECT_EQ(file.is_open(),true);
 	unsigned int size;
 	file >> size;
 	Vector<T> X(size);
 	for(unsigned int i = 0;i < size;++i) {
 		file >> X(i);
 	}
+	file.close();
 	return std::move(X);
 }
 

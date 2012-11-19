@@ -12,8 +12,14 @@
 
 template<class T>
 class GaussianKernel: public AbstractKernel<T> {
+protected:
+	double sigma;
 public:
-	Matrix<T> cacheKernel(Matrix<T> & X,double sigma) {
+	GaussianKernel(double _sigma = 0):sigma(_sigma) {}
+	void setSigma(double _sigma) {
+		sigma = _sigma;
+	}
+	Matrix<T> cacheKernel(Matrix<T> & X) {
 		Matrix<T> retval(X.rows,X.rows);
 		Vector<T> temp(X.rows);
 		/*
@@ -29,7 +35,7 @@ public:
 		 * retval = retval .^ kernelFunction(1,0)
 		 */
 		T a = 1,b = 0;
-		double kernelValue = kernelFunction(&a,&b,1,sigma);
+		double kernelValue = kernelFunction(&a,&b,1);
 		Matrix<T> multiplied = X.multiplyByTranspose();
 		for(unsigned int i = 0;i < X.rows;++i) {
 			for(unsigned int j = 0;j < X.rows;++j) {
@@ -39,7 +45,7 @@ public:
 		}
 		return std::move(retval);
 	}
-	double kernelFunction(T * x,T * y,int size,double sigma) {
+	double kernelFunction(T * x,T * y,int size) {
 		double sum = 0.0;
 		for(int i = 0;i < size;++i) {
 			sum -= pow(x[i]-y[i],2.0);
@@ -47,7 +53,7 @@ public:
 		sum /= 2*pow(sigma,2.0);
 		return exp(sum);
 	}
-	double kernelFunction(T x,T y,double sigma) {
+	double kernelFunction(T x,T y) {
 		double sum = -pow(x-y,2.0);
 		sum /= 2*pow(sigma,2.0);
 		return exp(sum);

@@ -13,9 +13,9 @@
 template<class T>
 class AbstractKernel {
 public:
-	virtual Matrix<T> cacheKernel(Matrix<T> & X,double sigma = 0) = 0;
-	virtual double kernelFunction(T * x,T * y,int size,double sigma = 0) = 0;
-	virtual double kernelFunction(T x,T y,double sigma = 0) = 0;
+	virtual Matrix<T> cacheKernel(Matrix<T> & X) = 0;
+	virtual double kernelFunction(T * x,T * y,int size) = 0;
+	virtual double kernelFunction(T x,T y) = 0;
 };
 
 

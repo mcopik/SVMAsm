@@ -96,6 +96,14 @@ public:
 		return data[row*cols+col];
 	}
 	/**
+	 * Function operator.
+	 * Gives access to row in matrix(read only).
+	 */
+	T * operator() (unsigned row) const {
+		ASSERT(row,<,rows);
+		return &data[row*cols];
+	}
+	/**
 	 * Destructor.
 	 */
 	~Matrix() {

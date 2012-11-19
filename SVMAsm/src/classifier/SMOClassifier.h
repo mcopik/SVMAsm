@@ -21,18 +21,6 @@
 #define DEBUG_OUTPUT true
 #define TIME_OUTPUT false
 
-template<class T>
-Matrix<T> loadMatrix2(std::ifstream & file) {
-	unsigned int rows,cols;
-	file >> rows >> cols;
-	Matrix<T> X(rows,cols);
-	for(unsigned int i = 0;i < rows;++i) {
-		for(unsigned int j = 0;j < cols;++j) {
-			file >> X(i,j);
-		}
-	}
-	return std::move(X);
-}
 
 template<class T,class U>
 class SMOClassifier: public AbstractClassifier<T,U> {
@@ -45,15 +33,14 @@ public:
 	/**
 	 * Trains model on given data.
 	 */
-	void train(TrainData<T> & train,AbstractKernel<T> & _kernel,double _sigma,bool cacheKernel = false) {
+	void train(TrainData<T> & train,AbstractKernel<T> & _kernel,bool cacheKernel = false) {
 
 		if(cacheKernel) {
-			model = new TrainedModel<T,U>(train.X,train.Y,std::move(_kernel.cacheKernel(train.X,_sigma)));
+			model = new TrainedModel<T,U>(train.X,train.Y,std::move(_kernel.cacheKernel(train.X)));
 			kernel = &_kernel;
 		}
 		else {
 			model = new TrainedModel<T,U>(train.X,train.Y);
-			sigma = _sigma;
 			kernel = &_kernel;
 			if(cache == nullptr) {
 				model->cachedKernel.rows = train.X.rows;
@@ -114,7 +101,6 @@ public:
 						(temp > error && model->alphas(i) > 0) ) {
 					if(TIME_OUTPUT)
 						t=clock();
-					kernelVal = computeKernel(i,j);
 					if(TIME_OUTPUT)
 						std::cout << "Compute kernelVal: " << ((double)(clock()-t))/CLOCKS_PER_SEC << std::endl;
 
@@ -125,6 +111,7 @@ public:
 		            while (j == i)
 			            j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));//randDistr(gen));
 
+					kernelVal = computeKernel(i,j);
 					if(TIME_OUTPUT)
 						t=clock();
 					/**
@@ -235,27 +222,13 @@ public:
 	/**
 	 * Predicts values on test data.
 	 */
-	Vector<T> predict(TrainData<T> & test,Matrix<T> & kernel) {
-		Vector<T> predicts(test.X.rows);
+	Vector<T> predict(Matrix<T> & X/*Matrix<T> & kernel*/) {
+		Vector<T> predicts(X.rows);
 		U E;
-		/*
-		for(int i = 0;i < test.X.rows;++i) {
-			E = 0;
-			for(unsigned int k = 0;k < model->alphas.size;++k)
-				if(model->alphas(k) != 0)
-					E += model->alphas(k)*model->Y(k)*kernel(i,k);
-			//E = E - model->Y(i)+ model->b;
-			if(E >= 0) {
-				predicts(i) = 1;
-			}
-			else {
-				predicts(i) = 0;
-			}
-		}*/
 
-		for(int i = 0;i < test.X.rows;++i) {
+		for(unsigned int i = 0;i < X.rows;++i) {
 			for(unsigned int k = 0;k < model->alphas.size;++k)
-				E += model->alphas(k)*test.X(i,k) + model->b;
+				E += model->alphas(k)*X(i,k) + model->b;
 			if(E >= 0) {
 				predicts(i) = 1;
 			}
@@ -275,6 +248,8 @@ public:
 		delete model;
 	}
 private:
+	/* Currently not used.
+
 	U computeE(int row) {
 		U result = model->b - model->Y(row);
 		Vector<U> kernel(model->cachedKernel.rows);
@@ -283,27 +258,6 @@ private:
 		}
 		Vector<U> vec = (model->alphas.multiplyEachByEach(model->Y)).multiplyEachByEach(kernel);
 		for(unsigned int i = 0;i < kernel.size;++i) {
-			result += vec(i);
-		}
-		return result;
-	}
-	/*
-	U computeE(int row,AbstractKernel<U> & kernel,double sigma) {
-		U result = model->b - model->Y(row);
-		Vector<U> kernel_vec(model->X.rows);
-		U kernelVal = kernel.kernelFunction(1,0,sigma);
-		Vector<U> temp(model->X.cols);
-		U temp2;
-		for(unsigned int i = 0; i < model->X.rows;++i) {
-			for(unsigned int j = 0;j < model->X.cols;++j)
-				temp(j) = model->X(row,j) - model->X(i,j);
-			temp2 = 0;
-			for(unsigned int j = 0;j < model->X.cols;++j)
-				temp2 += pow(temp(j),2.0);
-			kernel_vec(i) = pow(kernelVal,temp2);
-		}
-		Vector<U> vec = (model->alphas.multiplyEachByEach(model->Y)).multiplyEachByEach(kernel_vec);
-		for(unsigned int i = 0;i < kernel_vec.size;++i) {
 			result += vec(i);
 		}
 		return result;
@@ -322,21 +276,8 @@ private:
 	U computeKernel(int a,int b) {
 		if(cache != nullptr)
 			return (*cache)(a,b);
-
-		//only for gaussian!
-		//if(a == b)
-		//	return 1;
 		if(model->cachedKernel(a,b) == 0) {
-			/*
-			U kernelVal = kernel->kernelFunction(1,0,sigma);
-			U temp2;
-			temp2 = 0;
-			for(unsigned int j = 0;j < model->X.cols;++j)
-				temp2 += pow(model->X(a,j) - model->X(b,j),2.0);
-			model->cachedKernel(a,b) = pow(kernelVal,temp2);*/
-			for(int i = 0;i < model->X.cols;++i) {
-				model->cachedKernel(a,b) = model->X(a,i) * model->X(b,i);
-			}
+			model->cachedKernel(a,b) = kernel->kernelFunction(model->X(a),model->X(b),model->X.cols);
 			counterKernel++;
 		}
 		return model->cachedKernel(a,b);
