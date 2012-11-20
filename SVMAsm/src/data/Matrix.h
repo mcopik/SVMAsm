@@ -37,7 +37,7 @@ public:
 	 * j - column
 	 */
 	T * data = nullptr;
-	Matrix(){}
+	Matrix():data(nullptr){}
 	/**
 	 * Constructor.
 	 */
@@ -129,7 +129,7 @@ public:
 	/**
 	 * Multiply matrix by its own transposed matrix.
 	 */
-	Matrix<T> multiplyByTranspose() {
+	Matrix<T> multiplyByTranspose(Matrix<T> & arg) {
 		///TODO:
 		///optimize - output matrix is symetric!
 		Matrix<T> retval(rows,rows);
@@ -137,7 +137,7 @@ public:
 			for(unsigned int j = 0;j < rows;++j) {
 				retval(i,j) = 0;
 				for(unsigned int k = 0;k < cols;++k) {
-						retval.data[i*rows+j] += data[i*cols+k]*data[j*cols+k];//this->operator()(i,k)*this->operator()(j,k);
+						retval.data[i*rows+j] += data[i*cols+k]*arg[j*cols+k];//this->operator()(i,k)*this->operator()(j,k);
 				}
 			}
 		}
@@ -151,6 +151,19 @@ public:
 			}
 		}
 		return std::move(retval);
+	}
+	Matrix<T> loadMatrix(const char * path) {
+		std::ifstream file(path);
+		unsigned int rows,cols;
+		file >> rows >> cols;
+		Matrix<T> X(rows,cols);
+		for(unsigned int i = 0;i < rows;++i) {
+			for(unsigned int j = 0;j < cols;++j) {
+				file >> X(i,j);
+			}
+		}
+		file.close();
+		return std::move(X);
 	}
 };
 

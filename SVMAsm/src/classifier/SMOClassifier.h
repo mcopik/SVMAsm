@@ -8,6 +8,7 @@
 #ifndef SMOCLASSIFIER_H_
 #define SMOCLASSIFIER_H_
 #include <iostream>
+#include <algorithm>
 #include "AbstractClassifier.h"
 #include "../data/TrainedModel.h"
 #include "../data/TrainData.h"
@@ -46,6 +47,8 @@ public:
 				model->cachedKernel.rows = train.X.rows;
 				model->cachedKernel.cols = train.X.rows;
 				model->cachedKernel.data = new U[train.X.rows*train.X.rows]();
+				std::fill_n(model->cachedKernel.data,model->cachedKernel.rows
+						*model->cachedKernel.cols,-1);
 			}
 		}
 		std::cout << "Training model: " << std::endl;
@@ -277,7 +280,7 @@ private:
 	U computeKernel(int a,int b) {
 		if(cache != nullptr)
 			return (*cache)(a,b);
-		if(model->cachedKernel(a,b) == 0) {
+		if(model->cachedKernel(a,b) == -1) {
 			model->cachedKernel(a,b) = kernel->kernelFunction(model->X(a),model->X(b),model->X.cols);
 			counterKernel++;
 		}

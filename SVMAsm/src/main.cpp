@@ -13,13 +13,26 @@
 #include <fstream>
 #include "kernel/LinearKernel.h"
 #include "classifier/SMOClassifier.h"
-#include "../test/functions.h"
 #include "data/Vector.h"
 #include "data/Matrix.h"
 #include "data/TrainData.h"
 //extern void testSharedLibrary(const char*,int,const char*);
 //extern void testSMO();
 //extern void testThreads();
+
+
+template<class T>
+Vector<T> loadVector(const char * path) {
+	std::ifstream file(path);
+	unsigned int size;
+	file >> size;
+	Vector<T> X(size);
+	for(unsigned int i = 0;i < size;++i) {
+		file >> X(i);
+	}
+	file.close();
+	return std::move(X);
+}
 int main()
 {
     //testSharedLibrary("./libasm.so",RTLD_LAZY,"foo");
@@ -27,16 +40,21 @@ int main()
     //testSMO();
     //testThreads();    std::ifstream file("../test/gaussianKernelTest3Y");
 	LinearKernel<float> kernel;
-	std::ifstream file("trainDataY");
-    Vector<float> y = loadVector<float>(file);
-    file.close();
-    file.open("trainDataX");
-    Matrix<float> X = loadMatrix<float>(file);
-    file.close();
+    Vector<float> y = loadVector<float>("../test/testDataSpam500/Y");
+    Matrix<float> X = loadMatrix<float>("../test/testDataSpam500/X");
+    Matrix<float> Xtest = loadMatrix<float>("../test/testDataSpam500/Xtest");
+    Vector<float> Ytest = loadVector<float>("../test/testDataSpam500/Ytest");
     TrainData<float> data(X,y);
     SMOClassifier<float,float> classifier;
     classifier.train(data,kernel,true);
     std::cout << "b: " << classifier.model->b << std::endl;
+	Vector<float> predicts = classifier.predict(Xtest);
+	int counter = 0;
+    for(unsigned int i = 0;i < predicts.size;++i)
+    	if(predicts(i) == Ytest(i))
+    		++counter;
+    std::cout << counter << std::endl;
+    std::cout << ((float)counter)/predicts.size << std::endl;
     return 0;
 }
 

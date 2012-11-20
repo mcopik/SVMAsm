@@ -14,13 +14,8 @@ template<class T>
 void testGaussianCached(GaussianKernel<T> kernel,const char * filenameX,
 		const char * filenameResult,double maxError) {
 
-	std::ifstream file(filenameX);
-	EXPECT_EQ(file.is_open(),true);
-    Matrix<T> X = loadMatrix<T>(file);
-    file.close();
-    file.open(filenameResult);
-    Matrix<T> result = loadMatrix<T>(file);
-    file.close();
+    Matrix<T> X = loadMatrix<T>(filenameX);
+    Matrix<T> result = loadMatrix<T>(filenameResult);
 
     double sum = 0.0;
     double temp = 0.0;
@@ -43,11 +38,20 @@ TEST_F(KernelTest,kernelFunction) {
 	<< "Gaussian Kernel differs on testdata";
 }
 
-TEST_F(KernelTest,kernelCached) {
+TEST_F(KernelTest,KernelCached51x2) {
 	kernel.setSigma(0.1);
     testGaussianCached(kernel,"testData51x2/X",
     		"testData51x2/kernel",0.002);
     kernelDouble.setSigma(0.1);
     testGaussianCached(kernelDouble,"testData51x2/X",
     		"testData51x2/kernel",10e-10);
+}
+
+TEST_F(KernelTest,KernelCached863x2) {
+	kernel.setSigma(0.1);
+    testGaussianCached(kernel,"testData863x2/X",
+    		"testData863x2/kernel",0.002);
+    kernelDouble.setSigma(0.1);
+    testGaussianCached(kernelDouble,"testData863x2/X",
+    		"testData863x2/kernel",10e-10);
 }
