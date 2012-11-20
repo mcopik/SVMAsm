@@ -225,10 +225,11 @@ public:
 	Vector<T> predict(Matrix<T> & X/*Matrix<T> & kernel*/) {
 		Vector<T> predicts(X.rows);
 		U E;
-
 		for(unsigned int i = 0;i < X.rows;++i) {
+			E = 0;
 			for(unsigned int k = 0;k < model->alphas.size;++k)
-				E += model->alphas(k)*X(i,k) + model->b;
+				E += model->alphas(k)*model->Y(k)*	\
+					kernel->kernelFunction(model->X(k),X(i),model->X.cols);
 			if(E >= 0) {
 				predicts(i) = 1;
 			}

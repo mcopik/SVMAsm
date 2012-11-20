@@ -21,12 +21,11 @@ void testClassifier(TrainData<T> & data,AbstractClassifier<T,T> & classifier,
 		Vector<T> & Ytest,float correctness) {
 	classifier.train(data,kernel);
 	Vector<T> predicts = classifier.predict(Xtest);
-	//int counter = 0;
-    //for(unsigned int i = 0;i < predicts.size;++i)
-    	//if(predicts(i) == Ytest(i))
-    		//++counter;
-    //float result = ((float)counter)/predicts.size;
-    float result = 0;
+	int counter = 0;
+    for(unsigned int i = 0;i < predicts.size;++i)
+    	if(predicts(i) == Ytest(i))
+    		++counter;
+    float result = ((float)counter)/predicts.size;
 	EXPECT_GE(result,correctness);
 }
 TEST_F(SMOClassifierTest,test51x2) {
