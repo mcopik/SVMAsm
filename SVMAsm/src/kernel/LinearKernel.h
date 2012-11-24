@@ -14,13 +14,13 @@ class LinearKernel: public AbstractKernel<T> {
 public:
 	Matrix<T> cacheKernel(Matrix<T> & X) {
 		Matrix<T> retval(X.rows,X.rows);
-		retval = X.multiplyByTranspose();
+		retval = X.multiplyByTranspose(X);
 		return std::move(retval);
 	}
 	double kernelFunction(T * x,T * y,int size) {
 		double sum = 0.0;
 		for(int i = 0;i < size;++i) {
-			sum -= x[i]*y[i];
+			sum += x[i]*y[i];
 		}
 		return sum;
 	}

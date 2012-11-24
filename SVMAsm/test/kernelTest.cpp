@@ -41,17 +41,17 @@ TEST_F(KernelTest,kernelFunction) {
 TEST_F(KernelTest,KernelCached51x2) {
 	kernel.setSigma(0.1);
     testGaussianCached(kernel,"testData51x2/X",
-    		"testData51x2/kernel",0.002);
+    		"testData51x2/gaussianKernel",0.002);
     kernelDouble.setSigma(0.1);
     testGaussianCached(kernelDouble,"testData51x2/X",
-    		"testData51x2/kernel",10e-10);
+    		"testData51x2/gaussianKernel",10e-10);
 }
 
 TEST_F(KernelTest,KernelCached863x2) {
 	kernel.setSigma(0.1);
     testGaussianCached(kernel,"testData863x2/X",
-    		"testData863x2/kernel",0.002);
+    		"testData863x2/gaussianKernel",0.002);
     kernelDouble.setSigma(0.1);
     testGaussianCached(kernelDouble,"testData863x2/X",
-    		"testData863x2/kernel",10e-10);
+    		"testData863x2/gaussianKernel",10e-10);
 }

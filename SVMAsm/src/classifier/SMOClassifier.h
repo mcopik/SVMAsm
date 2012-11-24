@@ -230,9 +230,15 @@ public:
 		U E;
 		for(unsigned int i = 0;i < X.rows;++i) {
 			E = 0;
+			//for(unsigned int k = 0;k < model->alphas.size;++k)
+			//	E += model->alphas(k)*model->Y(k)*	\
+			//		kernel->kernelFunction(model->X(k),X(i),model->X.cols);
 			for(unsigned int k = 0;k < model->alphas.size;++k)
-				E += model->alphas(k)*model->Y(k)*	\
-					kernel->kernelFunction(model->X(k),X(i),model->X.cols);
+				E += model->alphas(k)*kernel->kernelFunction(X(i),model->X(k),model->X.cols)
+				*model->Y(k);
+			std::cout << i << " " << E << std::endl;
+			E += model->b;
+			std::cout << i << " " << E << std::endl;
 			if(E >= 0) {
 				predicts(i) = 1;
 			}

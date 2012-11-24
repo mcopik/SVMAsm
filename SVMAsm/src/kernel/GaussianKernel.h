@@ -36,7 +36,7 @@ public:
 		 */
 		T a = 1,b = 0;
 		double kernelValue = kernelFunction(&a,&b,1);
-		Matrix<T> multiplied = X.multiplyByTranspose();
+		Matrix<T> multiplied = X.multiplyByTranspose(X);
 		for(unsigned int i = 0;i < X.rows;++i) {
 			for(unsigned int j = 0;j < X.rows;++j) {
 				retval(i,j) = temp(i) + temp(j) - 2*multiplied(i,j);

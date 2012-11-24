@@ -11,7 +11,7 @@
 #include <iostream>
 #include <dlfcn.h>
 #include <fstream>
-#include "kernel/LinearKernel.h"
+#include "kernel/GaussianKernel.h"
 #include "classifier/SMOClassifier.h"
 #include "data/Vector.h"
 #include "data/Matrix.h"
@@ -39,16 +39,22 @@ int main()
     //testSharedLibrary("./libcpp.so",RTLD_LAZY,"foo");
     //testSMO();
     //testThreads();    std::ifstream file("../test/gaussianKernelTest3Y");
-	LinearKernel<float> kernel;
-    Vector<float> y = loadVector<float>("../test/testDataSpam500/Y");
-    Matrix<float> X = loadMatrix<float>("../test/testDataSpam500/X");
-    Matrix<float> Xtest = loadMatrix<float>("../test/testDataSpam500/Xtest");
-    Vector<float> Ytest = loadVector<float>("../test/testDataSpam500/Ytest");
+	GaussianKernel<float> kernel;
+    Vector<float> y = loadVector<float>("../test/testData51x2/Y");
+    Matrix<float> X = Matrix<float>::loadMatrix("../test/testData51x2/X");
+    Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testData51x2/Xtest");
+    Vector<float> Ytest = loadVector<float>("../test/testDataSpam51x2/Ytest");
     TrainData<float> data(X,y);
     SMOClassifier<float,float> classifier;
+    kernel.setSigma(0.1);
+    std::cout << X.rows << " " << X.cols << std::endl;
+    std::cout << y.size  << std::endl;
+
     classifier.train(data,kernel,true);
     std::cout << "b: " << classifier.model->b << std::endl;
-	Vector<float> predicts = classifier.predict(Xtest);
+    for(int i = 0;i < X.rows;++i)
+    	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
+    Vector<float> predicts = classifier.predict(Xtest);
 	int counter = 0;
     for(unsigned int i = 0;i < predicts.size;++i)
     	if(predicts(i) == Ytest(i))

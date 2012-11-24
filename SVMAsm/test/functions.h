@@ -15,7 +15,7 @@
 template<class T>
 Matrix<T> loadMatrix(const char * path) {
 	std::ifstream file(path);
-	EXPECT_EQ(file.is_open(),true);
+	assert(file.is_open() == true);
 	unsigned int rows,cols;
 	file >> rows >> cols;
 	Matrix<T> X(rows,cols);
@@ -31,7 +31,7 @@ Matrix<T> loadMatrix(const char * path) {
 template<class T>
 Vector<T> loadVector(const char * path) {
 	std::ifstream file(path);
-	EXPECT_EQ(file.is_open(),true);
+	ASSERT_TRUE(file.is_open()) << "Failed to open " << path;
 	unsigned int size;
 	file >> size;
 	Vector<T> X(size);

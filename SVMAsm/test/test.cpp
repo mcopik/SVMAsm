@@ -102,12 +102,7 @@ void testSMO() {
     testGaussianCached<double>("../test/gaussianKernelTestX",
     		"../test/gaussianKernelTestResult",10e-10);
 */
-    std::ifstream file("../test/gaussianKernelTest3Y");
-    Vector<float> y = loadVector<float>(file);
-    file.close();
-    file.open("../test/gaussianKernelTest3X");
-    Matrix<float> X = loadMatrix<float>(file);
-    file.close();
+
     file.open("../test/data");
     Matrix<float> Z = loadMatrix<float>(file);
     file.close();

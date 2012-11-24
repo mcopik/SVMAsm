@@ -137,7 +137,7 @@ public:
 			for(unsigned int j = 0;j < rows;++j) {
 				retval(i,j) = 0;
 				for(unsigned int k = 0;k < cols;++k) {
-						retval.data[i*rows+j] += data[i*cols+k]*arg[j*cols+k];//this->operator()(i,k)*this->operator()(j,k);
+						retval.data[i*rows+j] += data[i*cols+k]*arg.data[j*cols+k];//this->operator()(i,k)*this->operator()(j,k);
 				}
 			}
 		}
@@ -152,7 +152,7 @@ public:
 		}
 		return std::move(retval);
 	}
-	Matrix<T> loadMatrix(const char * path) {
+	static Matrix<T> loadMatrix(const char * path) {
 		std::ifstream file(path);
 		unsigned int rows,cols;
 		file >> rows >> cols;

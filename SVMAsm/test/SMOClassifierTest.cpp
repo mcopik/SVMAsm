@@ -9,11 +9,13 @@
 #include "functions.h"
 #include "../src/classifier/SMOClassifier.h"
 #include "../src/kernel/GaussianKernel.h"
+#include "../src/kernel/LinearKernel.h"
 
 class SMOClassifierTest : public ::testing::Test {
 protected:
 	SMOClassifier<float,float> classifier;
-	GaussianKernel<float> kernel;
+	GaussianKernel<float> gaussianKernel;
+	LinearKernel<float> linearKernel;
 };
 template<class T>
 void testClassifier(TrainData<T> & data,AbstractClassifier<T,T> & classifier,
@@ -28,12 +30,34 @@ void testClassifier(TrainData<T> & data,AbstractClassifier<T,T> & classifier,
     float result = ((float)counter)/predicts.size;
 	EXPECT_GE(result,correctness);
 }
+
 TEST_F(SMOClassifierTest,test51x2) {
 	Matrix<float> X = loadMatrix<float>("testData51x2/X");
 	Vector<float> Y = loadVector<float>("testData51x2/Y");
 	Matrix<float> Xtest = loadMatrix<float>("testData51x2/Xtest");
 	Vector<float> Ytest = loadVector<float>("testData51x2/Ytest");
-	kernel.setSigma(0.1);
+	gaussianKernel.setSigma(0.1);
 	TrainData<float> data(X,Y);
-	testClassifier(data,classifier,kernel,Xtest,Ytest,1.0);
+	testClassifier(data,classifier,gaussianKernel,Xtest,Ytest,1.0);
+}
+
+TEST_F(SMOClassifierTest,testSpam500Gaussian) {
+
+    Vector<float> y = loadVector<float>("../test/testDataSpam500/Y");
+    Matrix<float> X = Matrix<float>::loadMatrix("../test/testDataSpam500/X");
+    Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testDataSpam500/Xtest");
+    Vector<float> Ytest = loadVector<float>("../test/testDataSpam500/Ytest");
+	TrainData<float> data(X,y);
+	gaussianKernel.setSigma(0.1);
+	testClassifier(data,classifier,gaussianKernel,Xtest,Ytest,0.7);
+}
+
+TEST_F(SMOClassifierTest,testSpam500Linear) {
+
+    Vector<float> y = loadVector<float>("../test/testDataSpam500/Y");
+    Matrix<float> X = Matrix<float>::loadMatrix("../test/testDataSpam500/X");
+    Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testDataSpam500/Xtest");
+    Vector<float> Ytest = loadVector<float>("../test/testDataSpam500/Ytest");
+	TrainData<float> data(X,y);
+	testClassifier(data,classifier,linearKernel,Xtest,Ytest,0.95);
 }
