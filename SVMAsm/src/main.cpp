@@ -21,18 +21,6 @@
 //extern void testThreads();
 
 
-template<class T>
-Vector<T> loadVector(const char * path) {
-	std::ifstream file(path);
-	unsigned int size;
-	file >> size;
-	Vector<T> X(size);
-	for(unsigned int i = 0;i < size;++i) {
-		file >> X(i);
-	}
-	file.close();
-	return std::move(X);
-}
 int main()
 {
     //testSharedLibrary("./libasm.so",RTLD_LAZY,"foo");
@@ -40,27 +28,27 @@ int main()
     //testSMO();
     //testThreads();    std::ifstream file("../test/gaussianKernelTest3Y");
 	GaussianKernel<float> kernel;
-    Vector<float> y = loadVector<float>("../test/testData51x2/Y");
+    Vector<float> y = Vector<float>::loadVector("../test/testData51x2/Y");
     Matrix<float> X = Matrix<float>::loadMatrix("../test/testData51x2/X");
     Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testData51x2/Xtest");
-    Vector<float> Ytest = loadVector<float>("../test/testDataSpam51x2/Ytest");
+    Vector<float> Ytest = Vector<float>::loadVector("../test/testDataSpam51x2/Ytest");
     TrainData<float> data(X,y);
     SMOClassifier<float,float> classifier;
     kernel.setSigma(0.1);
-    std::cout << X.rows << " " << X.cols << std::endl;
-    std::cout << y.size  << std::endl;
+    std::cout << X.rows() << " " << X.cols() << std::endl;
+    std::cout << y.size()  << std::endl;
 
     classifier.train(data,kernel,true);
     std::cout << "b: " << classifier.model->b << std::endl;
-    for(int i = 0;i < X.rows;++i)
+    for(int i = 0;i < X.rows();++i)
     	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
     Vector<float> predicts = classifier.predict(Xtest);
 	int counter = 0;
-    for(unsigned int i = 0;i < predicts.size;++i)
+    for(unsigned int i = 0;i < predicts.size();++i)
     	if(predicts(i) == Ytest(i))
     		++counter;
     std::cout << counter << std::endl;
-    std::cout << ((float)counter)/predicts.size << std::endl;
+    std::cout << ((float)counter)/predicts.size() << std::endl;
     return 0;
 }
 

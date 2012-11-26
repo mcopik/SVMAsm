@@ -13,12 +13,29 @@
 
 template<class T,class U>
 class AbstractClassifier {
+protected:
+	U C;
+	U error;
 public:
+	AbstractClassifier() {
+		C = 0;
+		error = 0;
+		model = nullptr;
+	}
+	void setMaxPasses(int maxPasses) {
+		this->maxPasses = maxPasses;
+	}
+	void setC(U C) {
+		this->C = C;
+	}
+	void setError(U error) {
+		this->error = error;
+	}
 	virtual void train(TrainData<T> &,AbstractKernel<T> &,bool=false) = 0;
 	virtual Vector<T> predict(Matrix<T> &) = 0;
 	virtual void setCachedKernel(Matrix<U> &) = 0;
 	virtual ~AbstractClassifier(){}
-	TrainedModel<T,U> * model = nullptr;
+	TrainedModel<T,U> * model;
 };
 
 

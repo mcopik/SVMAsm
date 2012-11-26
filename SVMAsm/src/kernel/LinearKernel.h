@@ -13,7 +13,7 @@ template<class T>
 class LinearKernel: public AbstractKernel<T> {
 public:
 	Matrix<T> cacheKernel(Matrix<T> & X) {
-		Matrix<T> retval(X.rows,X.rows);
+		Matrix<T> retval(X.rows(),X.rows());
 		retval = X.multiplyByTranspose(X);
 		return std::move(retval);
 	}

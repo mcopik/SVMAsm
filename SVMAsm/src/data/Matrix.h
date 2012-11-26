@@ -22,39 +22,39 @@
 
 template<class T>
 struct Matrix {
-public:
 	/**
 	 * Number of rows.
 	 */
-	unsigned int rows = 0;
+	unsigned int m_rows = 0;
 	/**
 	 * Number of columns.
 	 */
-	unsigned int cols = 0;
+	unsigned int m_cols = 0;
 	/**
 	 * data[i][j]
 	 * i - row
 	 * j - column
 	 */
 	T * data = nullptr;
-	Matrix():data(nullptr){}
+public:
+	Matrix():data(nullptr),m_rows(0),m_cols(0){}
 	/**
 	 * Constructor.
 	 */
-	Matrix(int _rows,int _cols):rows(_rows),cols(_cols),data(new T[_rows*_cols]){
+	Matrix(int _rows,int _cols):m_rows(_rows),m_cols(_cols),data(new T[_rows*_cols]){
 
 	}
 	/**
 	 * Copy constructor
 	 */
-	Matrix(const Matrix & m):rows(m.rows),cols(m.cols),data(new T[m.rows*m.rows]) {
-		for(int i = 0;i < rows*cols;++i)
+	Matrix(const Matrix & m):m_rows(m.rows()),m_cols(m.cols()),data(new T[m.rows*m.cols]) {
+		for(int i = 0;i < m_rows*m_cols;++i)
 			data[i] = m.data[i];
 	}
 	/**
 	 * Move constructor
 	 */
-	Matrix(Matrix && m):rows(m.rows),cols(m.cols),data(m.data) {
+	Matrix(Matrix && m):m_rows(m.rows()),m_cols(m.cols()),data(m.data) {
 		m.data = nullptr;
 	}
 	/**
@@ -70,10 +70,10 @@ public:
 	 */
 	Matrix & operator=(Matrix & m) {
 		delete data;
-		rows = m.rows;
-		cols = m.cols;
-		data = new T[rows*cols];
-		for(int i = 0;i < rows*cols;++i)
+		m_rows = m.rows();
+		m_cols = m.cols();
+		data = new T[m_rows*m_cols];
+		for(int i = 0;i < m_rows*m_cols;++i)
 			data[i] = m.data[i];
 		return *this;
 	}
@@ -82,26 +82,26 @@ public:
 	 * Gives access to elements in matrix(R/W).
 	 */
 	T & operator() (unsigned row,unsigned col) {
-		ASSERT(row,<,rows);
-		ASSERT(col,<,cols);
-		return data[row*cols+col];
+		ASSERT(row,<,m_rows);
+		ASSERT(col,<,m_cols);
+		return data[row*m_cols+col];
 	}
 	/**
 	 * Function operator.
 	 * Gives access to elements in matrix(read only).
 	 */
 	T operator() (unsigned row,unsigned col) const{
-		ASSERT(row,<,rows);
-		ASSERT(col,<,cols);
-		return data[row*cols+col];
+		ASSERT(row,<,m_rows);
+		ASSERT(col,<,m_cols);
+		return data[row*m_cols+col];
 	}
 	/**
 	 * Function operator.
 	 * Gives access to row in matrix(read only).
 	 */
 	T * operator() (unsigned row) const {
-		ASSERT(row,<,rows);
-		return &data[row*cols];
+		ASSERT(row,<,m_rows);
+		return &data[row*m_cols];
 	}
 	/**
 	 * Destructor.
@@ -110,16 +110,25 @@ public:
 		//std::cout << "Delete " << data << std::endl;
 		delete[] data;
 	}
+	unsigned int rows() {
+		return this->m_rows;
+	}
+	unsigned int cols() {
+		return this->m_cols;
+	}
+	T * matrixData() {
+		return data;
+	}
 	/**
 	 * Overloaded multiply operator.
 	 * Multiply by another matrix.
 	 */
 	Matrix<T> operator *(Matrix<T> & arg) {
-		Matrix<T> retval(rows,arg.cols);
-		for(unsigned int i = 0;i < rows;++i) {
-			for(unsigned int j = 0;j < arg.cols;++j) {
+		Matrix<T> retval(m_rows,arg.cols());
+		for(unsigned int i = 0;i < m_rows;++i) {
+			for(unsigned int j = 0;j < arg.cols();++j) {
 				retval(i,j) = 0;
-				for(unsigned int k = 0;k < cols;++k) {
+				for(unsigned int k = 0;k < m_cols;++k) {
 						retval(i,j) += this->operator()(i,k)*arg(k,j);
 				}
 			}
@@ -132,21 +141,21 @@ public:
 	Matrix<T> multiplyByTranspose(Matrix<T> & arg) {
 		///TODO:
 		///optimize - output matrix is symetric!
-		Matrix<T> retval(rows,rows);
-		for(unsigned int i = 0;i < rows;++i) {
-			for(unsigned int j = 0;j < rows;++j) {
+		Matrix<T> retval(m_rows,m_rows);
+		for(unsigned int i = 0;i < m_rows;++i) {
+			for(unsigned int j = 0;j < m_rows;++j) {
 				retval(i,j) = 0;
-				for(unsigned int k = 0;k < cols;++k) {
-						retval.data[i*rows+j] += data[i*cols+k]*arg.data[j*cols+k];//this->operator()(i,k)*this->operator()(j,k);
+				for(unsigned int k = 0;k < m_cols;++k) {
+						retval.data[i*m_rows+j] += data[i*m_cols+k]*arg.data[j*m_cols+k];//this->operator()(i,k)*this->operator()(j,k);
 				}
 			}
 		}
 		return std::move(retval);
 	}
 	Matrix<T> multiplyEachByEach(Matrix<T> & arg) {
-		Matrix<T> retval(rows,rows);
-		for(unsigned int i = 0;i < rows;++i) {
-			for(unsigned int j = 0;j < rows;++j) {
+		Matrix<T> retval(m_rows,m_rows);
+		for(unsigned int i = 0;i < m_rows;++i) {
+			for(unsigned int j = 0;j < m_rows;++j) {
 				retval(i,j) = this->operator()(i,j)*arg(i,j);
 			}
 		}

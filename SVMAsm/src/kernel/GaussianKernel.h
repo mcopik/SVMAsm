@@ -20,14 +20,14 @@ public:
 		sigma = _sigma;
 	}
 	Matrix<T> cacheKernel(Matrix<T> & X) {
-		Matrix<T> retval(X.rows,X.rows);
-		Vector<T> temp(X.rows);
+		Matrix<T> retval(X.rows(),X.rows());
+		Vector<T> temp(X.rows());
 		/*
 		 * temp = sum(X.^2,2);
 		 */
-		for(unsigned int i = 0;i < X.rows;++i) {
+		for(unsigned int i = 0;i < X.rows();++i) {
 			temp.data[i] = 0.0;
-			for(unsigned int j = 0;j < X.cols;++j)
+			for(unsigned int j = 0;j < X.cols();++j)
 				temp.data[i] += pow(X(i,j),2.0);
 		}
 		/*
@@ -37,8 +37,8 @@ public:
 		T a = 1,b = 0;
 		double kernelValue = kernelFunction(&a,&b,1);
 		Matrix<T> multiplied = X.multiplyByTranspose(X);
-		for(unsigned int i = 0;i < X.rows;++i) {
-			for(unsigned int j = 0;j < X.rows;++j) {
+		for(unsigned int i = 0;i < X.rows();++i) {
+			for(unsigned int j = 0;j < X.rows();++j) {
 				retval(i,j) = temp(i) + temp(j) - 2*multiplied(i,j);
 				retval(i,j) = pow(kernelValue,retval(i,j));
 			}

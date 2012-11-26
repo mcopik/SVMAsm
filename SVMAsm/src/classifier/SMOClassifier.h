@@ -44,21 +44,19 @@ public:
 			model = new TrainedModel<T,U>(train.X,train.Y);
 			kernel = &_kernel;
 			if(cache == nullptr) {
-				model->cachedKernel.rows = train.X.rows;
-				model->cachedKernel.cols = train.X.rows;
-				model->cachedKernel.data = new U[train.X.rows*train.X.rows]();
-				std::fill_n(model->cachedKernel.data,model->cachedKernel.rows
-						*model->cachedKernel.cols,-1);
+				model->cachedKernel = new Matrix<U>(train.X.rows(),train.X.rows());
+				std::fill_n(model->cachedKernel->matrixData(),model->cachedKernel->rows()
+						*model->cachedKernel->cols(),-1);
 			}
 		}
 		std::cout << "Training model: " << std::endl;
-		std::cout << "Number of examples: " <<  model->X.rows << std::endl;
-		std::cout << "Number of features: " <<  model->X.cols << std::endl;
+		std::cout << "Number of examples: " <<  model->X.rows() << std::endl;
+		std::cout << "Number of features: " <<  model->X.cols() << std::endl;
 
 		/**
 		 * Error cache.
 		 */
-		Vector<U> E(model->X.rows);
+		Vector<U> E(model->X.rows());
 		int maxPasses = 5;
 		int pass = 0;
 		U C = 0.1;
@@ -85,13 +83,13 @@ public:
 			//for each training example
 			if(TIME_OUTPUT)
 				c = clock();
-			for(unsigned int i = 0;i < model->X.rows;++i) {
+			for(unsigned int i = 0;i < model->X.rows();++i) {
 
 				if(TIME_OUTPUT)
 					t=clock();
 				if(model->alphas(i) == 0 || model->alphas(i) == C) {
 					E(i) = 0;
-					for(unsigned int k = 0;k < model->alphas.size;++k)
+					for(unsigned int k = 0;k < model->alphas.size();++k)
 						if(model->alphas(k) != 0)
 							E(i) += model->alphas(k)*model->Y(k)*computeKernel(k,i);
 					E(i) = E(i) - model->Y(i)+ model->b;
@@ -110,9 +108,9 @@ public:
 					/**
 					 * Choose j.
 					 */
-					j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));//randDistr(gen));
+					j = floor(model->X.rows() *(((double)rand()) / (RAND_MAX)));//randDistr(gen));
 		            while (j == i)
-			            j = floor(model->X.rows *(((double)rand()) / (RAND_MAX)));//randDistr(gen));
+			            j = floor(model->X.rows() *(((double)rand()) / (RAND_MAX)));//randDistr(gen));
 
 					kernelVal = computeKernel(i,j);
 					if(TIME_OUTPUT)
@@ -122,7 +120,7 @@ public:
 					 */
 					if(model->alphas(j) == 0 || model->alphas(j) == C) {
 						E(j) = model->b-model->Y(j);
-						for(unsigned int k = 0;k < model->alphas.size;++k)
+						for(unsigned int k = 0;k < model->alphas.size();++k)
 							if(model->alphas(k) > 0)
 								E(j) += model->alphas(k)*model->Y(k)*computeKernel(k,j);
 					}
@@ -201,7 +199,7 @@ public:
 					/**
 					 * Update error cache.
 					 */
-					for (unsigned int k = 0; k < E.size; ++k) {
+					for (unsigned int k = 0; k < E.size(); ++k) {
 						if (0 !=  model->alphas(k) && C != model->alphas(k)){
 							E(k) += model->Y(i) * (model->alphas(i) - alpha_i_old) * computeKernel( i,k)
 							+ model->Y(j) * (model->alphas(j) - alpha_j_old) * computeKernel(j,k)+ (model->b - old_bias);
@@ -226,15 +224,15 @@ public:
 	 * Predicts values on test data.
 	 */
 	Vector<T> predict(Matrix<T> & X/*Matrix<T> & kernel*/) {
-		Vector<T> predicts(X.rows);
+		Vector<T> predicts(X.rows());
 		U E;
-		for(unsigned int i = 0;i < X.rows;++i) {
+		for(unsigned int i = 0;i < X.rows();++i) {
 			E = 0;
 			//for(unsigned int k = 0;k < model->alphas.size;++k)
 			//	E += model->alphas(k)*model->Y(k)*	\
 			//		kernel->kernelFunction(model->X(k),X(i),model->X.cols);
-			for(unsigned int k = 0;k < model->alphas.size;++k)
-				E += model->alphas(k)*kernel->kernelFunction(X(i),model->X(k),model->X.cols)
+			for(unsigned int k = 0;k < model->alphas.size();++k)
+				E += model->alphas(k)*kernel->kernelFunction(X(i),model->X(k),model->X.cols())
 				*model->Y(k);
 			std::cout << i << " " << E << std::endl;
 			E += model->b;
@@ -286,11 +284,12 @@ private:
 	U computeKernel(int a,int b) {
 		if(cache != nullptr)
 			return (*cache)(a,b);
-		if(model->cachedKernel(a,b) == -1) {
-			model->cachedKernel(a,b) = kernel->kernelFunction(model->X(a),model->X(b),model->X.cols);
+		if((*model->cachedKernel)(a,b) == -1) {
+			(*model->cachedKernel)(a,b) =
+					kernel->kernelFunction(model->X(a),model->X(b),model->X.cols());
 			counterKernel++;
 		}
-		return model->cachedKernel(a,b);
+		return (*model->cachedKernel)(a,b);
 	}
 };
 

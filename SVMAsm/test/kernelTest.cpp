@@ -20,10 +20,10 @@ void testGaussianCached(GaussianKernel<T> kernel,const char * filenameX,
     double sum = 0.0;
     double temp = 0.0;
     Matrix<T> newResult = kernel.cacheKernel(X);
-	EXPECT_EQ(result.rows,newResult.rows);
-	EXPECT_EQ(result.cols,newResult.cols);
-    for(unsigned int i = 0;i < newResult.rows;++i) {
-    	for(unsigned int j = 0;j < newResult.cols;++j) {
+	EXPECT_EQ(result.rows(),newResult.rows());
+	EXPECT_EQ(result.cols(),newResult.cols());
+    for(unsigned int i = 0;i < newResult.rows();++i) {
+    	for(unsigned int j = 0;j < newResult.cols();++j) {
     		temp = std::abs(newResult(i,j)-result(i,j));
 			EXPECT_LT(temp,maxError);
     		sum += temp;
