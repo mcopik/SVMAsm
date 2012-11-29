@@ -9,6 +9,7 @@
 #define LINEARKERNEL_H_
 #include "../data/Matrix.h"
 #include "AbstractKernel.h"
+
 template<class T>
 class LinearKernel: public AbstractKernel<T> {
 public:

@@ -75,6 +75,8 @@ public:
 	 */
 	T & operator() (unsigned row) {
 		ASSERT(row,<,m_size);
+		if(row >= m_size)
+			throw std::exception();
 		return data[row];
 	}
 	/**
@@ -83,6 +85,8 @@ public:
 	 */
 	T operator() (unsigned row) const {
 		ASSERT(row,<,m_size);
+		if(row >= m_size)
+			throw std::exception();
 		return data[row];
 	}
 	unsigned int size() {

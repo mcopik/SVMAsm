@@ -11,31 +11,70 @@
 #include "../data/TrainedModel.h"
 #include "../kernel/AbstractKernel.h"
 
+
 template<class T,class U>
 class AbstractClassifier {
 protected:
-	U C;
-	U error;
+	typedef T inputType;
+	typedef U dataType;
+	/**
+	 * Cost parameter.
+	 */
+	dataType C;
+	/**
+	 * Converge condition parameter.
+	 */
+	dataType error;
+	/**
+	 * Standard computation/approximation error.
+	 */
+	dataType epsilon;
+	/**
+	 * Contains cached kernel values.
+	 */
+	Matrix<dataType> * cache;
 public:
+	/**
+	 * Base constructor.
+	 */
 	AbstractClassifier() {
 		C = 0;
 		error = 0;
 		model = nullptr;
+		cache = nullptr;
 	}
-	void setMaxPasses(int maxPasses) {
-		this->maxPasses = maxPasses;
+	/**
+	 * Set value of approximation error.
+	 * @param epsilon
+	 */
+	void setEpsilon(dataType epsilon) {
+		this->epsilon = epsilon;
 	}
-	void setC(U C) {
+	/**
+	 * Set cost value.
+	 * @param C
+	 */
+	void setC(dataType C) {
 		this->C = C;
 	}
-	void setError(U error) {
+	/**
+	 * Set converge condition parameter.
+	 * @param error
+	 */
+	void setError(dataType error) {
 		this->error = error;
 	}
-	virtual void train(TrainData<T> &,AbstractKernel<T> &,bool=false) = 0;
-	virtual Vector<T> predict(Matrix<T> &) = 0;
-	virtual void setCachedKernel(Matrix<U> &) = 0;
+	/**
+	 * Set pointer to matrix with cached kernel values.
+	 * @param cache
+	 */
+	void setCachedKernel(Matrix<U> & cache) {
+		this->cache = &cache;
+	}
+	virtual void train(TrainData<inputType> &,AbstractKernel<inputType> &,bool=false) = 0;
+	virtual Vector<T> predict(Matrix<inputType> &) = 0;
 	virtual ~AbstractClassifier(){}
-	TrainedModel<T,U> * model;
+	TrainedModel<inputType,dataType> * model;
 };
 
 

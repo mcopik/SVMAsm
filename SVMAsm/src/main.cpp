@@ -11,8 +11,10 @@
 #include <iostream>
 #include <dlfcn.h>
 #include <fstream>
+#include "kernel/LinearKernel.h"
 #include "kernel/GaussianKernel.h"
 #include "classifier/SMOClassifier.h"
+#include "classifier/ModifiedSMOClassifier.h"
 #include "data/Vector.h"
 #include "data/Matrix.h"
 #include "data/TrainData.h"
@@ -27,18 +29,24 @@ int main()
     //testSharedLibrary("./libcpp.so",RTLD_LAZY,"foo");
     //testSMO();
     //testThreads();    std::ifstream file("../test/gaussianKernelTest3Y");
-	GaussianKernel<float> kernel;
-    Vector<float> y = Vector<float>::loadVector("../test/testData51x2/Y");
-    Matrix<float> X = Matrix<float>::loadMatrix("../test/testData51x2/X");
-    Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testData51x2/Xtest");
-    Vector<float> Ytest = Vector<float>::loadVector("../test/testDataSpam51x2/Ytest");
+	LinearKernel<float> kernel;
+    Vector<float> y = Vector<float>::loadVector("../test/testDataSpam500/Y");
+    Matrix<float> X = Matrix<float>::loadMatrix("../test/testDataSpam500/X");
+    Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testDataSpam500/Xtest");
+    Vector<float> Ytest = Vector<float>::loadVector("../test/testDataSpam500/Ytest");
     TrainData<float> data(X,y);
-    SMOClassifier<float,float> classifier;
-    kernel.setSigma(0.1);
+    ModifiedSMOClassifier<float,float> classifier;
+    //kernel.setSigma(0.1);
+    classifier.setC(0.1);
+    classifier.setError(1e-3);
+    classifier.train(data,kernel,true);
     std::cout << X.rows() << " " << X.cols() << std::endl;
     std::cout << y.size()  << std::endl;
+    std::cout << classifier.model->b << std::endl;
+    for(int i = 0;i < classifier.model->alphas.size();++i)
+    	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
 
-    classifier.train(data,kernel,true);
+    //classifier.train(data,kernel,true);
     std::cout << "b: " << classifier.model->b << std::endl;
     for(int i = 0;i < X.rows();++i)
     	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
@@ -49,6 +57,7 @@ int main()
     		++counter;
     std::cout << counter << std::endl;
     std::cout << ((float)counter)/predicts.size() << std::endl;
+
     return 0;
 }
 

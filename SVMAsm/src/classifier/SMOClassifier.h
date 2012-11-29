@@ -26,11 +26,13 @@
 template<class T,class U>
 class SMOClassifier: public AbstractClassifier<T,U> {
 public:
+	using AbstractClassifier<T,U>::C;
+	using AbstractClassifier<T,U>::error;
 	using AbstractClassifier<T,U>::model;
+	using AbstractClassifier<T,U>::cache;
 	AbstractKernel<T> * kernel;
 	int counterKernel = 0;
 	double sigma = 0;
-	Matrix<U> * cache = nullptr;
 	/**
 	 * Trains model on given data.
 	 */
@@ -59,9 +61,9 @@ public:
 		Vector<U> E(model->X.rows());
 		int maxPasses = 5;
 		int pass = 0;
-		U C = 0.1;
+		//U C = 0.1;
 		int numChangedAlphas = 0;
-		U error = 1e-3;
+		//U error = 1e-3;
 		/**
 		 * C++11 random
 		 */
@@ -196,6 +198,7 @@ public:
 						model->b = b2;
 					else
 					   model->b = (b1+b2)/2;
+					int error_clock = clock();
 					/**
 					 * Update error cache.
 					 */
@@ -205,9 +208,11 @@ public:
 							+ model->Y(j) * (model->alphas(j) - alpha_j_old) * computeKernel(j,k)+ (model->b - old_bias);
 						}
 					}
+					//if(TIME_OUTPUT)
+						std::cout << "Error cache time: " << ((double)(clock()-error_clock))/CLOCKS_PER_SEC << std::endl;
 					++numChangedAlphas;
-					if(TIME_OUTPUT)
-						std::cout << "Loop end: " << ((double)(clock()-c))/CLOCKS_PER_SEC << std::endl;
+					//if(TIME_OUTPUT)
+						std::cout << "Loop end: " << ((double)(clock()-t))/CLOCKS_PER_SEC << std::endl;
 				}
 			}
 			pass = numChangedAlphas == 0 ? pass + 1 : 0;
@@ -245,9 +250,6 @@ public:
 			}
 		}
 		return predicts;
-	}
-	void setCachedKernel(Matrix<U> & _cache) {
-		cache = &_cache;
 	}
 	/**
 	 * Destructor.
