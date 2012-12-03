@@ -29,16 +29,17 @@ int main()
     //testSharedLibrary("./libcpp.so",RTLD_LAZY,"foo");
     //testSMO();
     //testThreads();    std::ifstream file("../test/gaussianKernelTest3Y");
-	LinearKernel<float> kernel;
+	/*LinearKernel<float> kernel;
     Vector<float> y = Vector<float>::loadVector("../test/testDataSpam500/Y");
     Matrix<float> X = Matrix<float>::loadMatrix("../test/testDataSpam500/X");
     Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testDataSpam500/Xtest");
     Vector<float> Ytest = Vector<float>::loadVector("../test/testDataSpam500/Ytest");
     TrainData<float> data(X,y);
-    ModifiedSMOClassifier<float,float> classifier;
+    SMOClassifier<float,float> classifier;
     //kernel.setSigma(0.1);
     classifier.setC(0.1);
     classifier.setError(1e-3);
+    classifier.setEpsilon(1e-3);
     classifier.train(data,kernel,true);
     std::cout << X.rows() << " " << X.cols() << std::endl;
     std::cout << y.size()  << std::endl;
@@ -56,7 +57,7 @@ int main()
     	if(predicts(i) == Ytest(i))
     		++counter;
     std::cout << counter << std::endl;
-    std::cout << ((float)counter)/predicts.size() << std::endl;
+    std::cout << ((float)counter)/predicts.size() << std::endl;*/
 
     return 0;
 }

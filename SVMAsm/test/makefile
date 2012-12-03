@@ -1,5 +1,5 @@
 CC=g++
-SOURCES=kernelTest.cpp SMOClassifierTest.cpp AllTests.cpp
+SOURCES=kernelTest.cpp SMOClassifierTest.cpp ModifiedSMOClassifierTest.cpp AllTests.cpp
 OBJECTS=$(patsubst %.cpp,%.o,$(SOURCES))
 LDFLAGS=-ldl -pthread
 CFLAGS=-g -Wall -Wextra -std=c++11

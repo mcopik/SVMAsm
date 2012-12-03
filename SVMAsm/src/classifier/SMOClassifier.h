@@ -240,7 +240,7 @@ public:
 				E += model->alphas(k)*kernel->kernelFunction(X(i),model->X(k),model->X.cols())
 				*model->Y(k);
 			std::cout << i << " " << E << std::endl;
-			E += model->b;
+			E -= model->b;
 			std::cout << i << " " << E << std::endl;
 			if(E >= 0) {
 				predicts(i) = 1;

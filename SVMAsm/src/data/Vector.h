@@ -95,6 +95,10 @@ public:
 	T * vectorData() {
 		return data;
 	}
+	T * vectorData(int pos) {
+		assert(pos < size);
+		return &data[pos];
+	}
 	Vector<T> multiplyEachByEach(Vector<T> & arg) {
 		Vector<T> retval(m_size);
 		for(unsigned int i = 0;i < m_size;++i) {

@@ -40,6 +40,7 @@ public:
 	AbstractClassifier() {
 		C = 0;
 		error = 0;
+		epsilon = 0;
 		model = nullptr;
 		cache = nullptr;
 	}
