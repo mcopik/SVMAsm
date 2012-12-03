@@ -109,10 +109,10 @@ public:
 		iHigh = threadsData[0].iHigh;
 		iLow = threadsData[0].iLow;
 		for(int i = 1;i < numberOfThreads;++i) {
-			if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh)) {
+			if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh+threadDataSize*i)) {
 				iHigh = threadsData[i].iHigh+threadDataSize*i;
 			}
-			if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow)) {
+			if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow+threadDataSize*i)) {
 				iLow = threadsData[i].iLow+threadDataSize*i;
 			}
 		}
@@ -126,7 +126,7 @@ public:
 		std::cout << "alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
 		std::cout << "alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
 		std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
-		updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
+		//updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
 		//std::cout << "alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
 		//std::cout << "alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
 		//getfLow(fLow,iLow);
@@ -145,7 +145,7 @@ public:
 			updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
 			//getfHigh(fHigh,iHigh);
 			//getfLow(fLow,iLow);
-
+			std::cout << "updatefLow " << (*errorCache)(iLow) << " updatefHigh " << (*errorCache)(iHigh) << std::endl;
 			for(int i = 0;i < numberOfThreads;++i) {
 				pthread_create(&(threadID[i]),NULL,function,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
@@ -154,10 +154,10 @@ public:
 			iHigh = threadsData[0].iHigh;
 			iLow = threadsData[0].iLow;
 			for(int i = 1;i < numberOfThreads;++i) {
-				if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh)) {
+				if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh+threadDataSize*i)) {
 					iHigh = threadsData[i].iHigh+threadDataSize*i;
 				}
-				if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow)) {
+				if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow+threadDataSize*i)) {
 					iLow = threadsData[i].iLow+threadDataSize*i;
 				}
 			}
@@ -167,9 +167,9 @@ public:
 			alphaHighOld = model->alphas(iHigh);
 			alphaLowOld = model->alphas(iLow);
 			updateAlpha(iHigh,iLow);
-			//std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
-			//std::cout << "iHigh " << iHigh << " alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
-			//std::cout << "iLow " << iLow << " alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
+			std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
+			std::cout << "iHigh " << iHigh << " alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
+			std::cout << "iLow " << iLow << " alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
 			//std::cout << "yHigh" << model->Y(iHigh) << " yLow " << model->Y(iLow) << std::endl;
 			//std::cout << nr_iter++ << std::endl;
 			//getfLow(fLow,iLow);

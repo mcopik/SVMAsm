@@ -36,7 +36,7 @@ int main()
     Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testDataSpam500/Xtest");
     Vector<float> Ytest = Vector<float>::loadVector("../test/testDataSpam500/Ytest");
     TrainData<float> data(X,y);
-    ModifiedSMOClassifier<float,float> classifier;
+    ModifiedParallelSMOClassifier<float,float> classifier;
     //kernel.setSigma(0.1);
     classifier.setC(0.1);
     classifier.setError(1e-3);

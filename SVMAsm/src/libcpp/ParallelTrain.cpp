@@ -38,6 +38,7 @@ extern "C" void findHighLow(ParallelTrainData<float,float> * x) {
 				(equalsWithTolerance(x->alphaArray[i],0) && x->yArray[i] < 0) ||
 				(equalsWithTolerance(x->alphaArray[i],x->cost) && x->yArray[i] > 0)) {
 			if(x->errorArray[i] > fLow) {
+				std::cout << "Low in " << i << " " << x->errorArray[i] << " " << x->alphaArray[i] << " " << x->yArray[i] << std::endl;
 				fLow = x->errorArray[i];
 				iLow = i;
 			}

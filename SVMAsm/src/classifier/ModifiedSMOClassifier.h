@@ -192,6 +192,10 @@ private:
 					(equalsWithTolerance(model->alphas(i),0) && model->Y(i) < 0) ||
 					(equalsWithTolerance(model->alphas(i),C) && model->Y(i) > 0)) {
 				if((*errorCache)(i) > fLow) {
+					std::cout << "Low in " << i << " "
+							<< (*errorCache)(i) << " " << model->alphas(i) << " " << model->Y(i)
+							<< std::endl;
+
 					fLow = (*errorCache)(i);
 					iLow = i;
 				}
