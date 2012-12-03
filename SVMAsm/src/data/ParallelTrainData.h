@@ -3,7 +3,7 @@
 
 #include "../kernel/AbstractKernel.h"
 
-template<class T>
+template<class T,class U>
 struct ParallelTrainData {
 public:
 	/**
@@ -23,7 +23,11 @@ public:
 	/**
 	 * Cost value.
 	 */
-	int cost;
+	U cost;
+	/**
+	 * Approximation error value.
+	 */
+	U error;
 	/**
 	 * Thread saves here iHigh value.
 	 */
@@ -36,7 +40,7 @@ public:
 	 * Pointer to array with error function values.
 	 * Used in updating error cache.
 	 */
-	T * errorArray;
+	U * errorArray;
 	/**
 	 * Pointer to kernel class.
 	 */
@@ -56,11 +60,11 @@ public:
 	/**
 	 * Value of model->Y(iHigh)*model->alphas(iHigh) - highOld.
 	 */
-	T errorUpdateHigh;
+	U errorUpdateHigh;
 	/**
 	 * Value of model->Y(iLow)*model->alphas(iLow) - lowOld.
 	 */
-	T erroUpdateLow;
+	U erroUpdateLow;
 };
 
 

@@ -1,9 +1,9 @@
 CC=g++
-SOURCES=foo.cpp
-OBJECTS=foo.o
+SOURCES=ParallelTrain.cpp
+OBJECTS=ParallelTrain.o
 FLAGS=-Wl
 LDFLAGS=-shared
-CFLAGS=-g -fPIC -Wall -m32
+CFLAGS=-g -fPIC -Wall -m32 -std=c++11
 OUTPUT=../../bin/libcpp.so
 TARGET=libcpp.so
 all:	$(TARGET)

@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
-
+#include <fstream>
 #define ASSERT(left,operator,right) \
 { if(!((left) operator (right))) { 	\
 	std::cerr << "ASSERT FAILED: " << \
