@@ -97,6 +97,7 @@ public:
 			threadsData[i].kernel = kernel;
 			threadsData[i].X = &model->X;
 			threadsData[i].cachedKernel = cachedKernel;
+			threadsData[i].threadID = i;
 		}
 		std::cout << threadsData[0].cost << " " << threadsData[0].error << std::endl;
 		std::cout << "dlopen" << std::endl;
@@ -142,7 +143,19 @@ public:
 		int nr_iter = 0;
 
 		do {
-			updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
+			for(int i = 0;i < numberOfThreads;++i) {
+				threadsData[i].errorUpdateHigh = model->Y(iHigh)*
+						(model->alphas(iHigh) - alphaHighOld);
+				threadsData[i].errorUpdateLow = model->Y(iLow)*
+						(model->alphas(iLow) - alphaLowOld);
+				threadsData[i].iHigh = iHigh;
+				threadsData[i].iLow = iLow;
+			}
+			for(int i = 0;i < numberOfThreads;++i) {
+				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))updateErrorCache,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+			}
+			//updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
 			std::cout << "updatefLow " << (*errorCache)(iLow) << " updatefHigh " << (*errorCache)(iHigh) << std::endl;
 			for(int i = 0;i < numberOfThreads;++i) {
 				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
@@ -163,14 +176,6 @@ public:
 			fHigh = (*errorCache)(iHigh);
 			alphaHighOld = model->alphas(iHigh);
 			alphaLowOld = model->alphas(iLow);
-			for(int i = 0;i < numberOfThreads;++i) {
-				threadsData[i].errorUpdateHigh = model->Y(iHigh)*
-						(model->alphas(iHigh) - alphaHighOld);
-				threadsData[i].errorUpdateLow = model->Y(iLow)*
-						(model->alphas(iLow) - alphaLowOld);
-				threadsData[i].iHigh = iHigh;
-				threadsData[i].iLow = iLow;
-			}
 			updateAlpha(iHigh,iLow);
 			std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
 			std::cout << "iHigh " << iHigh << " alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
@@ -322,14 +327,15 @@ private:
 		Matrix<dataType> * cachedKernel = data->cachedKernel;
 		unsigned int iHigh = data->iHigh;
 		unsigned int iLow = data->iLow;
+		unsigned int offset = size*data->threadID;
 		dataType diff = 0;
 		for(unsigned int i = 0;i < size;++i) {
 			diff = 0;
 			diff += data->errorUpdateHigh*
-					computeKernel(kernel,cachedKernel,X,iHigh,i);
+					computeKernel(kernel,cachedKernel,*X,iHigh,i+offset);
 			diff += data->errorUpdateLow*
-					computeKernel(kernel,cachedKernel,X,iLow,i);
-			data->errorCache(i) += diff;
+					computeKernel(kernel,cachedKernel,*X,iLow,i+offset);
+			data->errorArray[i] += diff;
 		}
 	}
 	/**
@@ -339,6 +345,7 @@ private:
 	 * @param highOld old value of alphaHigh
 	 * @param lowOld old value of alphaLow
 	 */
+/*
 	void updateErrorCache(int iHigh,int iLow,dataType highOld,dataType lowOld) {
 		Vector<dataType> & error = *errorCache;
 		for(unsigned int i = 0;i < error.size();++i) {
@@ -354,7 +361,7 @@ private:
 					model->Y(iLow)*computeKernel(kernel,cachedKernel,model->X,iLow,i);
 			//std::cout << "error(" << i << ") " << error(i) << std::endl;
 		}
-	}
+	}*/
 	static bool equalsWithTolerance(float first, float second,
 			float error = 10e-3) {
 		if(std::abs(first-second) <= error) {
@@ -368,7 +375,7 @@ private:
 		if((*cachedKernel)(first,second) == -1) {
 			(*cachedKernel)(first,second) =
 					kernel->kernelFunction(model->X(first),
-							(model->X)(second),model->X.cols());
+							model->X(second),model->X.cols());
 		}
 		return (*cachedKernel)(first,second);
 	}

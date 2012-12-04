@@ -61,6 +61,11 @@ public:
 	 * Value of model->Y(iLow)*model->alphas(iLow) - lowOld.
 	 */
 	U errorUpdateLow;
+	/**
+	 * Number of this thread.
+	 * Determines part of data.
+	 */
+	unsigned int threadID;
 };
 
 
