@@ -46,17 +46,13 @@ public:
 	 */
 	AbstractKernel<T> * kernel;
 	/**
-	 * Array with X(iHigh) row.
+	 * Training matrix.
 	 */
-	T * xHigh;
+	Matrix<T> * X;
 	/**
-	 * Array with X(iLow) row.
+	 * Matrix with cached kernel.
 	 */
-	T * xLow;
-	/**
-	 * Number of features in model.
-	 */
-	int featuresNumber;
+	Matrix<T> * cachedKernel;
 	/**
 	 * Value of model->Y(iHigh)*model->alphas(iHigh) - highOld.
 	 */

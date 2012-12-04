@@ -95,7 +95,8 @@ public:
 			threadsData[i].cost = C;
 			threadsData[i].error = error;
 			threadsData[i].kernel = kernel;
-			threadsData[i].featuresNumber = model->X.cols();
+			threadsData[i].X = &model->X;
+			threadsData[i].cachedKernel = cachedKernel;
 		}
 		std::cout << threadsData[0].cost << " " << threadsData[0].error << std::endl;
 		std::cout << "dlopen" << std::endl;
@@ -163,8 +164,6 @@ public:
 			alphaHighOld = model->alphas(iHigh);
 			alphaLowOld = model->alphas(iLow);
 			for(int i = 0;i < numberOfThreads;++i) {
-				threadsData[i].xHigh = model->X(iHigh);
-				threadsData[i].xLow = model->X(iLow);
 				threadsData[i].errorUpdateHigh = model->Y(iHigh)*
 						(model->alphas(iHigh) - alphaHighOld);
 				threadsData[i].errorUpdateLow = model->Y(iLow)*
@@ -319,11 +318,18 @@ private:
 	static void updateErrorCache(ParallelTrainData<inputType,dataType> * data) {
 		unsigned int size = data->trainDataSize;
 		AbstractKernel<inputType> * kernel = data->kernel;
-		inputType * xHigh = data->xHigh;
-		inputType * xLow = data->xLow;
+		Matrix<dataType> * X = data->X;
+		Matrix<dataType> * cachedKernel = data->cachedKernel;
+		unsigned int iHigh = data->iHigh;
+		unsigned int iLow = data->iLow;
 		dataType diff = 0;
 		for(unsigned int i = 0;i < size;++i) {
 			diff = 0;
+			diff += data->errorUpdateHigh*
+					computeKernel(kernel,cachedKernel,X,iHigh,i);
+			diff += data->errorUpdateLow*
+					computeKernel(kernel,cachedKernel,X,iLow,i);
+			data->errorCache(i) += diff;
 		}
 	}
 	/**
