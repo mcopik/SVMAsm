@@ -45,6 +45,7 @@ private:
 	using AbstractClassifier<inputType,dataType>::epsilon;
 	int numberOfThreads;
 	ParallelTrainData<inputType,dataType> * threadsData;
+	Matrix<dataType> * cachedKernel = nullptr;
 public:
 	using AbstractClassifier<T,U>::model;
 	void train(TrainData<inputType> & train,AbstractKernel<inputType> & _kernel,
@@ -57,9 +58,9 @@ public:
 		}
 		model = new TrainedModel<inputType,dataType>
 				(train.X,train.Y);
-		model->cachedKernel = new Matrix<dataType>(train.X.rows(),train.X.rows());
-		std::fill_n(model->cachedKernel->matrixData(),model->cachedKernel->rows()
-				*model->cachedKernel->cols(),-1);
+		cachedKernel = new Matrix<dataType>(train.X.rows(),train.X.rows());
+		std::fill_n(cachedKernel->matrixData(),cachedKernel->rows()
+				*cachedKernel->cols(),-1);
 		kernel = &_kernel;
 		std::cout << "Training model: " << std::endl;
 		std::cout << "Number of examples: " <<  model->X.rows() << std::endl;
@@ -164,8 +165,10 @@ public:
 			for(int i = 0;i < numberOfThreads;++i) {
 				threadsData[i].xHigh = model->X(iHigh);
 				threadsData[i].xLow = model->X(iLow);
-				threadsData[i].errorUpdateHigh = model->alphas(iHigh) - alphaHighOld;
-				threadsData[i].errorUpdateLow = model->alphas(iLow) - alphaLowOld;
+				threadsData[i].errorUpdateHigh = model->Y(iHigh)*
+						(model->alphas(iHigh) - alphaHighOld);
+				threadsData[i].errorUpdateLow = model->Y(iLow)*
+						(model->alphas(iLow) - alphaLowOld);
 				threadsData[i].iHigh = iHigh;
 				threadsData[i].iLow = iLow;
 			}
@@ -220,6 +223,7 @@ public:
 	 */
 	~ModifiedParallelSMOClassifier() {
 		delete model;
+		delete cachedKernel;
 		delete errorCache;
 		delete threadsData;
 	}
@@ -313,7 +317,14 @@ private:
 				*(oldAlphaLow - model->alphas(iLow));
 	}
 	static void updateErrorCache(ParallelTrainData<inputType,dataType> * data) {
-
+		unsigned int size = data->trainDataSize;
+		AbstractKernel<inputType> * kernel = data->kernel;
+		inputType * xHigh = data->xHigh;
+		inputType * xLow = data->xLow;
+		dataType diff = 0;
+		for(unsigned int i = 0;i < size;++i) {
+			diff = 0;
+		}
 	}
 	/**
 	 * Updates error cache.
@@ -332,9 +343,9 @@ private:
 			//std::cout << "KerneliHigh " << computeKernel(iHigh,i)
 					//<< " KerneliLow " << computeKernel(iLow,i) << std::endl;
 			error(i) += (model->alphas(iHigh) - highOld)*
-					model->Y(iHigh)*computeKernel(iHigh,i) +
+					model->Y(iHigh)*computeKernel(kernel,cachedKernel,model->X,iHigh,i) +
 					(model->alphas(iLow) - lowOld)*
-					model->Y(iLow)*computeKernel(iLow,i);
+					model->Y(iLow)*computeKernel(kernel,cachedKernel,model->X,iLow,i);
 			//std::cout << "error(" << i << ") " << error(i) << std::endl;
 		}
 	}
@@ -347,20 +358,28 @@ private:
 			return false;
 		}
 	}
+	dataType computeKernel(unsigned int first,unsigned int second) {
+		if((*cachedKernel)(first,second) == -1) {
+			(*cachedKernel)(first,second) =
+					kernel->kernelFunction(model->X(first),
+							(model->X)(second),model->X.cols());
+		}
+		return (*cachedKernel)(first,second);
+	}
 	/**
 	 * Computes kernel value for training examples a,b.
 	 * @param a
 	 * @param b
 	 * @return kernel value
 	 */
-	U computeKernel(int a,int b) {
-		if(cache != nullptr)
-			return (*cache)(a,b);
-		if((*model->cachedKernel)(a,b) == -1) {
-			(*model->cachedKernel)(a,b) =
-					kernel->kernelFunction(model->X(a),model->X(b),model->X.cols());
+	static dataType computeKernel(AbstractKernel<dataType> * kernel,
+			Matrix<dataType> * cachedKernel,Matrix<inputType> & X,
+			unsigned int first,unsigned int second) {
+		if((*cachedKernel)(first,second) == -1) {
+			(*cachedKernel)(first,second) =
+					kernel->kernelFunction(X(first),X(second),X.cols());
 		}
-		return (*model->cachedKernel)(a,b);
+		return (*cachedKernel)(first,second);
 	}
 };
 
