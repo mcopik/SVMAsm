@@ -19,7 +19,7 @@ public:
 	/**
 	 * Size of arrays.
 	 */
-	int trainDataSize;
+	unsigned int trainDataSize;
 	/**
 	 * Cost value.
 	 */
@@ -31,11 +31,11 @@ public:
 	/**
 	 * Thread saves here iHigh value.
 	 */
-	int iHigh;
+	unsigned int iHigh;
 	/**
 	 * Thread saves here iLow value.
 	 */
-	int iLow;
+	unsigned int iLow;
 	/**
 	 * Pointer to array with error function values.
 	 * Used in updating error cache.
@@ -64,7 +64,7 @@ public:
 	/**
 	 * Value of model->Y(iLow)*model->alphas(iLow) - lowOld.
 	 */
-	U erroUpdateLow;
+	U errorUpdateLow;
 };
 
 

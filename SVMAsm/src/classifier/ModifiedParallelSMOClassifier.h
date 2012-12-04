@@ -79,7 +79,7 @@ public:
 			(*errorCache)(i) = -1*train.Y(i);
 		}
 		numberOfThreads = 2;
-		int threadDataSize = model->X.rows()/2;
+		int threadDataSize = model->X.rows()/numberOfThreads;
 		int * iHighArray = new int[numberOfThreads];
 		int * iLowArray = new int[numberOfThreads];
 		pthread_t * threadID = new pthread_t[numberOfThreads];
@@ -93,17 +93,19 @@ public:
 			threadsData[i].errorArray = errorCache->vectorData(threadDataSize*i);
 			threadsData[i].cost = C;
 			threadsData[i].error = error;
+			threadsData[i].kernel = kernel;
+			threadsData[i].featuresNumber = model->X.cols();
 		}
 		std::cout << threadsData[0].cost << " " << threadsData[0].error << std::endl;
 		std::cout << "dlopen" << std::endl;
-		void* handle = dlopen("./libcpp.so",RTLD_LAZY);
-		assert(handle != nullptr);
+		//void* handle = dlopen("./libcpp.so",RTLD_LAZY);
+		//assert(handle != nullptr);
 	    // reset errors
-		dlerror();
-		threadFunction function = (threadFunction) dlsym(handle, "findHighLow");
-		assert(function != nullptr);
+		//dlerror();
+		//threadFunction function = (threadFunction) dlsym(handle, "findHighLow");
+		//assert(function != nullptr);
 		for(int i = 0;i < numberOfThreads;++i) {
-			pthread_create(&(threadID[i]),NULL,function,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
 		}
 		iHigh = threadsData[0].iHigh;
@@ -137,17 +139,11 @@ public:
 		std::cout << "C " << C << " error " << error << std::endl;
 		int nr_iter = 0;
 
-		do {// {//(fHigh - fLow) < -1*error) {
-
-			if(nr_iter == 558) {
-				std::cout << "558" << std::endl;
-			}
+		do {
 			updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
-			//getfHigh(fHigh,iHigh);
-			//getfLow(fLow,iLow);
 			std::cout << "updatefLow " << (*errorCache)(iLow) << " updatefHigh " << (*errorCache)(iHigh) << std::endl;
 			for(int i = 0;i < numberOfThreads;++i) {
-				pthread_create(&(threadID[i]),NULL,function,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
 			}
 
@@ -163,9 +159,16 @@ public:
 			}
 			fLow = (*errorCache)(iLow);
 			fHigh = (*errorCache)(iHigh);
-			//std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
 			alphaHighOld = model->alphas(iHigh);
 			alphaLowOld = model->alphas(iLow);
+			for(int i = 0;i < numberOfThreads;++i) {
+				threadsData[i].xHigh = model->X(iHigh);
+				threadsData[i].xLow = model->X(iLow);
+				threadsData[i].errorUpdateHigh = model->alphas(iHigh) - alphaHighOld;
+				threadsData[i].errorUpdateLow = model->alphas(iLow) - alphaLowOld;
+				threadsData[i].iHigh = iHigh;
+				threadsData[i].iLow = iLow;
+			}
 			updateAlpha(iHigh,iLow);
 			std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
 			std::cout << "iHigh " << iHigh << " alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
@@ -179,7 +182,6 @@ public:
 		}while(fLow > (fHigh+2*error));
 		model->b = (fLow+fHigh)/2;
 
-	    dlclose(handle);
 		delete iHighArray;
 		delete iLowArray;
 		delete threadID;
@@ -222,6 +224,32 @@ public:
 		delete threadsData;
 	}
 private:
+	static void findHighLow(ParallelTrainData<inputType,dataType> * x) {
+		inputType fHigh = 1000000000;
+		dataType fLow = -1000000000;
+		int iLow = 0;
+		int iHigh = 0;
+		for(unsigned int i = 0;i < x->trainDataSize;++i) {
+			if((x->alphaArray[i] > x->error && x->alphaArray[i] < (x->cost-x->error)) ||
+					(equalsWithTolerance(x->alphaArray[i],0) && x->yArray[i] > 0) ||
+					(equalsWithTolerance(x->alphaArray[i],x->cost) && x->yArray[i] < 0)) {
+				if(x->errorArray[i] < fHigh) {
+					fHigh = x->errorArray[i];
+					iHigh = i;
+				}
+			}
+			if((x->alphaArray[i] > x->error && x->alphaArray[i] < (x->cost-x->error)) ||
+					(equalsWithTolerance(x->alphaArray[i],0) && x->yArray[i] < 0) ||
+					(equalsWithTolerance(x->alphaArray[i],x->cost) && x->yArray[i] > 0)) {
+				if(x->errorArray[i] > fLow) {
+					fLow = x->errorArray[i];
+					iLow = i;
+				}
+			}
+		}
+		x->iHigh = iHigh;
+		x->iLow = iLow;
+	}
 	/**
 	 * Computes new values of alpha.
 	 * @param iHigh index of alphaHigh
@@ -284,6 +312,9 @@ private:
 		model->alphas(iHigh) += model->Y(iHigh)*model->Y(iLow)
 				*(oldAlphaLow - model->alphas(iLow));
 	}
+	static void updateErrorCache(ParallelTrainData<inputType,dataType> * data) {
+
+	}
 	/**
 	 * Updates error cache.
 	 * @param iHigh index of modified alphaHigh
@@ -305,6 +336,15 @@ private:
 					(model->alphas(iLow) - lowOld)*
 					model->Y(iLow)*computeKernel(iLow,i);
 			//std::cout << "error(" << i << ") " << error(i) << std::endl;
+		}
+	}
+	static bool equalsWithTolerance(float first, float second,
+			float error = 10e-3) {
+		if(std::abs(first-second) <= error) {
+			return true;
+		}
+		else {
+			return false;
 		}
 	}
 	/**
