@@ -11,10 +11,12 @@
 #include <iostream>
 #include <algorithm>
 #include <pthread.h>
+#include <stddef.h>
 #include "AbstractClassifier.h"
 #include "../data/TrainedModel.h"
 #include "../data/TrainData.h"
 #include "../data/ParallelTrainData.h"
+#include "../data/ParallelAsmData.h"
 #include "../data/Vector.h"
 #include "../data/Matrix.h"
 #include <random>
@@ -45,9 +47,184 @@ private:
 	using AbstractClassifier<inputType,dataType>::epsilon;
 	int numberOfThreads;
 	ParallelTrainData<inputType,dataType> * threadsData;
+	ParallelAsmData * threadsAsmData;
 	Matrix<dataType> * cachedKernel = nullptr;
 public:
 	using AbstractClassifier<T,U>::model;
+	void trainAsm(TrainData<inputType> & train,AbstractKernel<inputType> & _kernel) {
+		std::cout << "TrainASM" << std::endl;
+		model = new TrainedModel<inputType,dataType>
+				(train.X,train.Y);
+		cachedKernel = new Matrix<dataType>(train.X.rows(),train.X.rows());
+		std::fill_n(cachedKernel->matrixData(),cachedKernel->rows()
+				*cachedKernel->cols(),-1);
+		kernel = &_kernel;
+		errorCache = new Vector<dataType>(train.X.rows());
+		dataType fHigh = 0.0;
+		int iHigh = 0;
+		dataType fLow = 0.0;
+		int iLow = 0;
+		dataType alphaHighOld = 0.0;
+		dataType alphaLowOld = 0.0;
+		/**
+		 * f(i) = -y(i)
+		 */
+		for(unsigned int i = 0;i < errorCache->size();++i) {
+			(*errorCache)(i) = -1*train.Y(i);
+		}
+		void * asmHandle = dlopen("./libasm.so",RTLD_LAZY);
+		assert(asmHandle != nullptr);
+		dlerror();
+		threadFunction findHighLowAsm = (threadFunction) dlsym(asmHandle, "findHighLow");
+		assert(findHighLowAsm != nullptr);
+		
+		
+		numberOfThreads = 2;
+		int threadDataSize = model->X.rows()/numberOfThreads;
+		int * iHighArray = new int[numberOfThreads];
+		int * iLowArray = new int[numberOfThreads];
+		pthread_t * threadID = new pthread_t[numberOfThreads];
+		int * ret = new int[numberOfThreads];
+		threadsData = new ParallelTrainData<inputType,dataType>[numberOfThreads];
+		threadsAsmData = new ParallelAsmData[numberOfThreads];
+		for(int i = 0;i < numberOfThreads;++i) {
+			threadsData[i].trainDataSize = threadDataSize;
+			threadsData[i].yArray = model->Y.vectorData(threadDataSize*i);
+			threadsData[i].alphaArray = model->alphas.vectorData(threadDataSize*i);
+			threadsData[i].errorArray = errorCache->vectorData(threadDataSize*i);
+			threadsData[i].cost = C;
+			threadsData[i].error = error;
+			threadsData[i].kernel = kernel;
+			threadsData[i].X = &model->X;
+			threadsData[i].cachedKernel = cachedKernel;
+			threadsData[i].threadID = i;
+		}
+		for(int i = 0;i < numberOfThreads;++i) {
+			threadsAsmData[i].trainDataSize = threadDataSize;
+			threadsAsmData[i].yArray = model->Y.vectorData(threadDataSize*i);
+			threadsAsmData[i].alphaArray = model->alphas.vectorData(threadDataSize*i);
+			threadsAsmData[i].errorArray = errorCache->vectorData(threadDataSize*i);
+			threadsAsmData[i].cost = C;
+			threadsAsmData[i].error = error;
+			threadsAsmData[i].kernel = kernel;
+			threadsAsmData[i].X = &model->X;
+			threadsAsmData[i].cachedKernel = cachedKernel;
+			threadsAsmData[i].threadID = i;
+		}
+		threadsAsmData[0].alphaArray[2] = 0.0;
+		threadsAsmData[1].alphaArray[2] = 0.1;
+		std::cout << "ASM " << std::endl;
+		for(int i = 0;i < numberOfThreads;++i) {
+			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLowAsm,(void*)(&threadsAsmData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+		}
+		std::cout << threadsAsmData[0].trainDataSize << " " << threadsAsmData[1].trainDataSize << std::endl;
+		std::cout << threadsAsmData[0].cost << " " << threadsAsmData[0].error << std::endl;
+		std::cout << threadsAsmData[1].cost << " " << threadsAsmData[1].error << std::endl;
+		assert(threadsAsmData[0].trainDataSize == 0 && threadsAsmData[1].trainDataSize == 0);
+		std::cout << threadsAsmData[0].cost << " " << threadsAsmData[0].error << std::endl;
+		std::cout << threadsAsmData[1].cost << " " << threadsAsmData[1].error << std::endl;
+		threadsAsmData[0].trainDataSize = 2000;
+		threadsAsmData[1].trainDataSize = 2000;
+		threadsAsmData[0].alphaArray[2] = 0.005;
+		threadsAsmData[1].alphaArray[2] = 0.098;
+		std::cout << "ASM " << std::endl;
+		for(int i = 0;i < numberOfThreads;++i) {
+			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLowAsm,(void*)(&threadsAsmData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+		}
+		std::cout << threadsAsmData[0].trainDataSize << " " << threadsAsmData[1].trainDataSize << std::endl;
+		std::cout << threadsAsmData[0].cost << " " << threadsAsmData[0].error << std::endl;
+		std::cout << threadsAsmData[1].cost << " " << threadsAsmData[1].error << std::endl;
+		assert(threadsAsmData[0].trainDataSize == 1 && threadsAsmData[1].trainDataSize == 1);
+		return;
+		for(int i = 0;i < numberOfThreads;++i) {
+			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+		}
+		iHigh = threadsData[0].iHigh;
+		iLow = threadsData[0].iLow;
+		for(int i = 1;i < numberOfThreads;++i) {
+			if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh+threadDataSize*i)) {
+				iHigh = threadsData[i].iHigh+threadDataSize*i;
+			}
+			if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow+threadDataSize*i)) {
+				iLow = threadsData[i].iLow+threadDataSize*i;
+			}
+		}
+		fLow = (*errorCache)(iLow);
+		fHigh = (*errorCache)(iHigh);
+		//getfHigh(fHigh,iHigh,threadsData,numberOfThreads);
+		//getfLow(fLow,iLow,threadsData);
+		alphaHighOld = model->alphas(iHigh);
+		alphaLowOld = model->alphas(iLow);
+		updateAlpha(iHigh,iLow);
+		std::cout << "alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
+		std::cout << "alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
+		std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
+		//updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
+		//std::cout << "alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
+		//std::cout << "alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
+		//getfLow(fLow,iLow);
+		//getfHigh(fHigh,iHigh);
+		std::cout << "iHigh " << iHigh <<
+			"	fHigh " << fHigh << " iLow "<< iLow << " fLow " << fLow << std::endl;
+		//if(0 < -1*error)
+		std::cout << "C " << C << " error " << error << std::endl;
+		int nr_iter = 0;
+
+		do {
+			for(int i = 0;i < numberOfThreads;++i) {
+				threadsData[i].errorUpdateHigh = model->Y(iHigh)*
+						(model->alphas(iHigh) - alphaHighOld);
+				threadsData[i].errorUpdateLow = model->Y(iLow)*
+						(model->alphas(iLow) - alphaLowOld);
+				threadsData[i].iHigh = iHigh;
+				threadsData[i].iLow = iLow;
+			}
+			for(int i = 0;i < numberOfThreads;++i) {
+				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))updateErrorCache,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+			}
+			//updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
+			std::cout << "updatefLow " << (*errorCache)(iLow) << " updatefHigh " << (*errorCache)(iHigh) << std::endl;
+			for(int i = 0;i < numberOfThreads;++i) {
+				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+			}
+
+			iHigh = threadsData[0].iHigh;
+			iLow = threadsData[0].iLow;
+			for(int i = 1;i < numberOfThreads;++i) {
+				if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh+threadDataSize*i)) {
+					iHigh = threadsData[i].iHigh+threadDataSize*i;
+				}
+				if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow+threadDataSize*i)) {
+					iLow = threadsData[i].iLow+threadDataSize*i;
+				}
+			}
+			fLow = (*errorCache)(iLow);
+			fHigh = (*errorCache)(iHigh);
+			alphaHighOld = model->alphas(iHigh);
+			alphaLowOld = model->alphas(iLow);
+			updateAlpha(iHigh,iLow);
+			std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
+			std::cout << "iHigh " << iHigh << " alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
+			std::cout << "iLow " << iLow << " alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
+			//std::cout << "yHigh" << model->Y(iHigh) << " yLow " << model->Y(iLow) << std::endl;
+			//std::cout << nr_iter++ << std::endl;
+			//getfLow(fLow,iLow);
+			//getfHigh(fHigh,iHigh);
+			//std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
+			//std::cout << fHigh - fLow << std::endl;
+		}while(fLow > (fHigh+2*error));
+		model->b = (fLow+fHigh)/2;
+
+		delete iHighArray;
+		delete iLowArray;
+		delete threadID;
+		delete ret;
+	}
 	void train(TrainData<inputType> & train,AbstractKernel<inputType> & _kernel,
 			bool cacheKernel = false) {
 
@@ -230,6 +407,7 @@ public:
 		delete cachedKernel;
 		delete errorCache;
 		delete threadsData;
+		delete threadsAsmData;
 	}
 private:
 	static void findHighLow(ParallelTrainData<inputType,dataType> * x) {
