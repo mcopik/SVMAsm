@@ -121,13 +121,17 @@ public:
 		std::cout << threadsAsmData[0].trainDataSize << " " << threadsAsmData[1].trainDataSize << std::endl;
 		std::cout << threadsAsmData[0].cost << " " << threadsAsmData[0].error << std::endl;
 		std::cout << threadsAsmData[1].cost << " " << threadsAsmData[1].error << std::endl;
-		assert(threadsAsmData[0].trainDataSize == 0 && threadsAsmData[1].trainDataSize == 0);
+		//assert(threadsAsmData[0].trainDataSize == 0 && threadsAsmData[1].trainDataSize == 0);
 		std::cout << threadsAsmData[0].cost << " " << threadsAsmData[0].error << std::endl;
 		std::cout << threadsAsmData[1].cost << " " << threadsAsmData[1].error << std::endl;
 		threadsAsmData[0].trainDataSize = 2000;
 		threadsAsmData[1].trainDataSize = 2000;
 		threadsAsmData[0].alphaArray[2] = 0.005;
 		threadsAsmData[1].alphaArray[2] = 0.098;
+		threadsAsmData[0].cost = C;
+		threadsAsmData[1].cost = C;
+		threadsAsmData[0].error = error;
+		threadsAsmData[1].error = error;
 		std::cout << "ASM " << std::endl;
 		for(int i = 0;i < numberOfThreads;++i) {
 			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLowAsm,(void*)(&threadsAsmData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
@@ -136,7 +140,7 @@ public:
 		std::cout << threadsAsmData[0].trainDataSize << " " << threadsAsmData[1].trainDataSize << std::endl;
 		std::cout << threadsAsmData[0].cost << " " << threadsAsmData[0].error << std::endl;
 		std::cout << threadsAsmData[1].cost << " " << threadsAsmData[1].error << std::endl;
-		assert(threadsAsmData[0].trainDataSize == 1 && threadsAsmData[1].trainDataSize == 1);
+		//assert(threadsAsmData[0].trainDataSize == 1 && threadsAsmData[1].trainDataSize == 1);
 		return;
 		for(int i = 0;i < numberOfThreads;++i) {
 			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);

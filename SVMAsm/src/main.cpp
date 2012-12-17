@@ -41,17 +41,16 @@ int main()
     classifier.setC(0.1);
     classifier.setError(1e-3);
     classifier.setEpsilon(1e-3);
-    classifier.train(data,kernel,false);
+    classifier.trainAsm(data,kernel);
     std::cout << X.rows() << " " << X.cols() << std::endl;
     std::cout << y.size()  << std::endl;
     std::cout << classifier.model->b << std::endl;
     //for(int i = 0;i < classifier.model->alphas.size();++i)
     //	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
 
-    classifier.train(data,kernel,true);
     std::cout << "b: " << classifier.model->b << std::endl;
-    for(int i = 0;i < X.rows();++i)
-    	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
+    /*for(int i = 0;i < X.rows();++i)
+    //	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
     Vector<float> predicts = classifier.predict(Xtest);
 	int counter = 0;
     for(unsigned int i = 0;i < predicts.size();++i)
@@ -59,7 +58,7 @@ int main()
     		++counter;
     std::cout << counter << std::endl;
     std::cout << ((float)counter)/predicts.size() << std::endl;
-
+*/
     return 0;
 }
 

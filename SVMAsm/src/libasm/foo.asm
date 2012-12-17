@@ -2,9 +2,10 @@ extern _GLOBAL_OFFSET_TABLE_
 
 global findHighLow:function
 segment .data
-fHigh:	dd	10000000
+fHigh:	dd	10000000.0
 fLow:	dd	-1000000
 zeroConst: dd	0
+iHigh:	dd	1
 segment .text
 %macro	arrayToFPU 2
 	push	edx
@@ -43,50 +44,61 @@ findHighLow:
 	xor	eax,eax
 	mov	edx,[ebp+8]	;structure
 	mov	ecx,[edx]	;trainDataSize
-	fld	dword [edx+16]	;load cost
-	fld	dword [edx+20]	;load error	
-	fld	dword [fHigh]	;fHigh init val
-	fld	dword [fLow]	;fLow init val
-	arrayToFPU	[edx+28],2
+	xor	ecx,ecx
+	add	ecx,1
+	xor	eax,eax
+	finit
+	fld	dword [edx+16]	;load cost	ST4
+	fld	dword [edx+20]	;load error	ST3
 ;for(i = 0;i < trainDataSize)
 LOOP:	
-	add	ebx,1
-	loop	LOOP
-	sub	ebx,1
-	mov	[edx],ebx 
-	;fld	dword [edx+16]
-	;fld	dword [edx+20]
-	;comi	ST0,ST1
-	;jne	final
-	;jmp	end
+	arrayToFPU	[edx+24],0 ;load y(i)	ST2
+	arrayToFPU	[edx+28],2 ;load alpha(i) ST1
 	
-final:	;fadd	dword [edx+20]
-	;fstp	dword [edx+16]
-	;mov	[edx],ebx
-	;sub	ebx,1
-	;mov	ecx, dword [fHigh]	
-	push	edx
-	push	ecx
-	fild	dword	[zeroConst]
-	fadd	ST0,ST4		;add error to low border
+	;checks if error < alpha < cost-error
+First:	fild	dword	[zeroConst]	;load zero ST0
+	fadd	ST0,ST3		;add error to low border
 	fcomi	ST0,ST1		;compare low+error > val
+	;fstp	dword [edx+16]
+	;fstp	dword [edx+20]
+	;fstp	ST0
+	;fst	dword [edx+16]
 	jb	is		;if ST0 < ST1 - may be in interval
 	jmp	isnt
 is:	fstp	ST0
-	;fst	dword [edx+16]
-	fld	ST4		;cost at stack top
-	fsub	ST0,ST4		;cost = cost-error
+	fld	ST3		;cost at stack top
+	;
+	fsub	ST0,ST3		;cost = cost-error
 	fcomi	ST0,ST1		;compare high-error > val
-	;fst	dword [edx+20]
+	fstp	ST0
 	jb	isnt		;if ST0 < ST1 - is not in interval
-	mov	eax,1
-	jmp	intervalFinal
-isnt	mov	eax,0
-intervalFinal:	pop	ecx
-	pop	edx
+	jmp	highCheck
+isnt	jmp	Second
+
+Second: jmp endLoop
+
+highCheck:
+	arrayToFPU	[edx+32],2;load error(i)
+	fld	dword [fHigh]
+	fcomi	ST0,ST1
+	jnb	highCheckLower
+	fstp	ST0
+	fstp	ST0
+	jmp endLoop
+highCheckLower:
+	mov	dword [iHigh],eax ;iHigh = i
+	fstp	ST0
+	fstp	dword [fHigh]	;fHigh = ST0
+	
+endLoop:
+	add	eax,1
+	loop	LOOP
 	;arrayToFPU	[edx+28],2
 	;fst	dword [edx+20]
-	mov	[edx], eax
+	fld	dword [fHigh]
+	fst	dword [edx+20]
+	fild	dword [iHigh]
+	fst	dword [edx+16]
 	;fstp	ST0
 	;fst	dword [edx+16]	
 end:	pop	ebx

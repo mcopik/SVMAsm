@@ -7,19 +7,22 @@ template<class T,class U>
 struct ParallelTrainData {
 public:
 	/**
-	 * Pointer to array with Y.
-	 * Used in finding iHigh,iLow.
-	 */
-	T * yArray;
-	/**
-	 * Pointer to array with alpha values.
-	 * Used in finding iHigh,iLow.
-	 */
-	T * alphaArray;
-	/**
 	 * Size of arrays.
 	 */
 	unsigned int trainDataSize;
+	/**
+	 * Thread saves here iHigh value.
+	 */
+	unsigned int iHigh;
+	/**
+	 * Thread saves here iLow value.
+	 */
+	unsigned int iLow;
+	/**
+	 * Number of this thread.
+	 * Determines part of data.
+	 */
+	unsigned int threadID;
 	/**
 	 * Cost value.
 	 */
@@ -29,13 +32,15 @@ public:
 	 */
 	U error;
 	/**
-	 * Thread saves here iHigh value.
+	 * Pointer to array with Y.
+	 * Used in finding iHigh,iLow.
 	 */
-	unsigned int iHigh;
+	T * yArray;
 	/**
-	 * Thread saves here iLow value.
+	 * Pointer to array with alpha values.
+	 * Used in finding iHigh,iLow.
 	 */
-	unsigned int iLow;
+	T * alphaArray;
 	/**
 	 * Pointer to array with error function values.
 	 * Used in updating error cache.
@@ -61,11 +66,6 @@ public:
 	 * Value of model->Y(iLow)*model->alphas(iLow) - lowOld.
 	 */
 	U errorUpdateLow;
-	/**
-	 * Number of this thread.
-	 * Determines part of data.
-	 */
-	unsigned int threadID;
 };
 
 
