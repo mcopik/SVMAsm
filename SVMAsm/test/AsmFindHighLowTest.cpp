@@ -46,8 +46,8 @@ protected:
 
 TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 	float yArray1[] = {1,1};
-	float alphaArray1[] = {0.05,0.05};
-	float errorArray1[] = {1.13,1.14};
+	float alphaArray1[] = {0.05,0.05,0.1,0.0};
+	float errorArray1[] = {1.13,1.14,0.0,2.5};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 2;
 		threadsAsmData[i].yArray = yArray1;
@@ -61,12 +61,12 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 		pthread_join(threadID[i],nullptr);
 	}
 		for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,0);
-		//ASSERT_EQ(threadsAsmData[i].iLow,0);
+		//ASSERT_EQ(threadsAsmData[0].iHigh,0);
+		ASSERT_EQ(threadsAsmData[i].iLow,1);
 	}
 	float yArray2[] = {1,1,-1,-1};
-	float alphaArray2[] = {0.05,0.067,0.098,0.0354};
-	float errorArray2[] = {0.085,0.093,0.025,0.013};
+	float alphaArray2[] = {0.0,0.067,0.098,0.0354};
+	float errorArray2[] = {0.095,0.093,0.025,0.013};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 4;
 		threadsAsmData[i].yArray = yArray2;
@@ -81,11 +81,11 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(threadsAsmData[0].iHigh,3);
-		//ASSERT_EQ(threadsAsmData[i].iLow,1);
+		ASSERT_EQ(threadsAsmData[i].iLow,1);
 	}
-	
+	//lowest and highest error are excluded - alpha too close to 0/cost!
 	float yArray3[] = {1,-1,-1,1,1,-1};
-	float alphaArray3[] = {0.05,0.02,0.067,0.098,0.0354,0.055};
+	float alphaArray3[] = {0.05,0.001,0.067,0.098,0.0354,0.9999};
 	float errorArray3[] = {0.093,0.0,0.085,0.013,0.03,0.1};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 6;
@@ -99,8 +99,8 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,1);
-		//ASSERT_EQ(threadsAsmData[i].iLow,0);
+		ASSERT_EQ(threadsAsmData[0].iHigh,3);
+		ASSERT_EQ(threadsAsmData[i].iLow,0);
 	}
 }
 

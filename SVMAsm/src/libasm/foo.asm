@@ -63,9 +63,12 @@ findHighLow:
 	fld	dword [edx+20]	;stack: error,cost
 ;for(i = 0;i < trainDataSize)
 LOOP:	
+	mov	eax,[edx]
+	sub	eax,ecx
 	arrayToFPU	[edx+24],eax ;stack: y(i),error,cost
 	arrayToFPU	[edx+28],eax ;stack: alphas(i),y(i)error,cost
-	
+	mov	dword [ebx+4],0
+	mov	dword [ebx],0
 
 	;checks if error < alpha < cost-error
 middle:	
@@ -121,14 +124,30 @@ highCheck:
 highCheckAssign:
 	mov	eax,[edx]
 	sub	eax,ecx
-	;mov	dword [ebx+12],eax
-	;fild	dword [ebx+12]
-	
-	;fstp	dword [edx+4]
 	mov	dword [ebx+12],eax	;iHigh = i
 	fstp	ST0			;stack: error(i),alphas(i),y(i),error,cost
 	fstp	dword [ebx+20]		;fHigh = ST0 | stack: alphas(i),y(i),error,cost
+	
 lowCheck:
+	mov	eax,dword [ebx+4]	;check if flag is set
+	cmp	eax,0
+	je	endLoop			;lowCheck flag = 0
+	mov	eax,[edx]
+	sub	eax,ecx			;get number of iteration
+	arrayToFPU [edx+32],eax		;stack: error(i),alphas(i),y(i),error,cost
+	fld	dword [ebx+16]		;stack: fLow,error(i),alphas(i),y(i),error,cost
+	fcomi	ST0,ST1			;compare fLow and error(i)
+	jb	lowCheckAssign		;set new value
+	fstp	ST0			;stack: error(i),alphas(i),y(i),error,cost
+	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	jmp	endLoop			;end iteration	
+lowCheckAssign:
+	mov	eax,[edx]
+	sub	eax,ecx
+	mov	dword [ebx+8],eax	;iLow = i
+	fstp	ST0			;stack: error(i),alphas(i),y(i),error,cost
+	fstp	dword [ebx+16]		;fLow = ST0 | stack: alphas(i),y(i),error,cost
+	
 endLoop:
 	fstp	ST0			;stack: y(i),error,cost
 	fstp	ST0			;stack: error,cost

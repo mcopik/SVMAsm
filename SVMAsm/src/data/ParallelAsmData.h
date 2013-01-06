@@ -12,11 +12,11 @@ public:
 	/**
 	 * Thread saves here iHigh value.
 	 */
-	unsigned int iHigh;
+	float iHigh;
 	/**
 	 * Thread saves here iLow value.
 	 */
-	unsigned int iLow;
+	float iLow;
 	/**
 	 * Number of this thread.
 	 * Determines part of data.
