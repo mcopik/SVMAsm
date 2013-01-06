@@ -2,11 +2,15 @@ extern _GLOBAL_OFFSET_TABLE_
 
 global findHighLow:function
 segment .data
-fHigh:	dd	10000000.0
-fLow:	dd	-1000000
-zeroConst: dd	0
-iHigh:	dd	1
+zeroConst:	dd	0
+fHigh:		dd	10000000.0
+fLow:		dd	-1000000.0
+iHigh:		dd	-1
+iLow:		dd	-1
+lowFlag		dd	0
+highFlag	dd	0
 segment .text
+
 %macro	arrayToFPU 2
 	push	edx
 	mov	edx,%1
@@ -14,23 +18,24 @@ segment .text
 	pop	edx
 %endmacro
 
-%macro inInterval 4
-	push	edx
-	push	ecx
-	mov	edx,%1
-	add	edx,%3
-	cmp	%4,edx
-	jg	is
-	mov	edx,%2
-	sub	edx,%3
-	cmp	edx,%4
-	jg	is
-	jmp	isnt
-is:	mov	eax,1
-	jmp	intervalFinal
-isnt	mov	eax,0
-intervalFinal:	pop	edx
-	pop	ecx  
+; ST0 - first operand
+; ST1 - second operand
+; ST3 - maximal error
+; value in ST3 is destroyed!
+; eax = 1 when |ST0-ST1| < error
+%macro equalsWithTolerance 0
+	fsub	ST0,ST1
+	fabs
+	fcomi	ST0,ST3
+	jb	@@equal
+	jmp	@@notEqual
+@@equal:
+	mov	eax,1
+	jmp	@@finish
+@@notEqual:
+	mov	eax,0
+@@finish:
+	nop
 %endmacro
 
 ;	Input: ParallelAsmData struct
@@ -44,65 +49,99 @@ findHighLow:
 	xor	eax,eax
 	mov	edx,[ebp+8]	;structure
 	mov	ecx,[edx]	;trainDataSize
-	xor	ecx,ecx
-	add	ecx,1
-	xor	eax,eax
+	push	dword	0	; temp_esp [ebx+24]
+	push	dword	[fHigh] ; fHigh [ebx+20]
+	push	dword	[fLow]	; fLow [ebx+16]
+	push	dword	-1	; iHigh [ebx+12]
+	push	dword	-1	; iLow [ebx+8]
+	push	dword	0	; lowFlag [ebx+4]
+	push	dword	0	; highFlag [ebx]
+	mov	ebx,esp		; stack pointer in ebx
+	mov	[ebx+24],esp
 	finit
-	fld	dword [edx+16]	;load cost	ST4
-	fld	dword [edx+20]	;load error	ST3
+	fld	dword [edx+16]	;stack: cost
+	fld	dword [edx+20]	;stack: error,cost
 ;for(i = 0;i < trainDataSize)
 LOOP:	
-	arrayToFPU	[edx+24],0 ;load y(i)	ST2
-	arrayToFPU	[edx+28],2 ;load alpha(i) ST1
+	arrayToFPU	[edx+24],eax ;stack: y(i),error,cost
+	arrayToFPU	[edx+28],eax ;stack: alphas(i),y(i)error,cost
 	
-	;checks if error < alpha < cost-error
-First:	fild	dword	[zeroConst]	;load zero ST0
-	fadd	ST0,ST3		;add error to low border
-	fcomi	ST0,ST1		;compare low+error > val
-	;fstp	dword [edx+16]
-	;fstp	dword [edx+20]
-	;fstp	ST0
-	;fst	dword [edx+16]
-	jb	is		;if ST0 < ST1 - may be in interval
-	jmp	isnt
-is:	fstp	ST0
-	fld	ST3		;cost at stack top
-	;
-	fsub	ST0,ST3		;cost = cost-error
-	fcomi	ST0,ST1		;compare high-error > val
-	fstp	ST0
-	jb	isnt		;if ST0 < ST1 - is not in interval
-	jmp	highCheck
-isnt	jmp	Second
 
-Second: jmp endLoop
+	;checks if error < alpha < cost-error
+middle:	
+	fldz				;stack: 0,alphas(i),y(i),error,cost
+	fadd	ST0,ST3			;add error to low border
+	fcomi	ST0,ST1			;compare low+error > val
+	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	jb	is			;if ST0 < ST1 - may be in interval
+	jmp	second			;second condition
+is:	
+	fld	ST3			;stack: cost,alphas(i),y(i),error,cost
+	fsub	ST0,ST3			;cost = cost-error
+	fcomi	ST0,ST1			;compare high-error > val
+	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	jb	second			;if ST0 < ST1 - is not in interval
+	mov	eax,1
+	mov	dword [ebx],eax		;check high condition
+	mov	dword [ebx+4],eax	;check low condition
+	jmp	highCheck		;check conditions
+
+second:	
+	jmp	endLoop
+;	fxch	ST0,ST1		;ST0 is now y(i)
+;	fild	dword	[zeroConst]
+;	fcomi	ST0,ST1		;if ST0 < ST1 - y(i) is positive
+;	fstp	ST0
+;	fxch	ST0,ST1		;revert changes
+;	jb	yPositive
+;	jmp	yNegative
+;yPositive:
+;	fild	dword	[zeroConst]
+;	jmp secondCheck
+;yNegative: 
+;	fld ST3
+;secondCheck:
+;	equalsWithTolerance
+;	cmp	eax,dword [zeroConst]
+;	je	endLoop
 
 highCheck:
-	arrayToFPU	[edx+32],2;load error(i)
-	fld	dword [fHigh]
-	fcomi	ST0,ST1
-	jnb	highCheckLower
-	fstp	ST0
-	fstp	ST0
-	jmp endLoop
-highCheckLower:
-	mov	dword [iHigh],eax ;iHigh = i
-	fstp	ST0
-	fstp	dword [fHigh]	;fHigh = ST0
+	mov	eax,dword [ebx]		;check if flag is set
+	cmp	eax,0
+	je	lowCheck		;highCheck flag = 0
+	mov	eax,[edx]
+	sub	eax,ecx
+	arrayToFPU [edx+32],eax		;stack: error(i),alphas(i),y(i),error,cost
+	fld	dword [ebx+20]		;stack: fHigh,error(i),alphas(i),y(i),error,cost
+	fcomi	ST0,ST1			;compare fHigh and error(i)
+	jnb	highCheckAssign		;set new value
+	fstp	ST0			;stack: error(i),alphas(i),y(i),error,cost
+	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	jmp	lowCheck		;check fLow	
+highCheckAssign:
+	mov	eax,[edx]
+	sub	eax,ecx
+	;mov	dword [ebx+12],eax
+	;fild	dword [ebx+12]
 	
+	;fstp	dword [edx+4]
+	mov	dword [ebx+12],eax	;iHigh = i
+	fstp	ST0			;stack: error(i),alphas(i),y(i),error,cost
+	fstp	dword [ebx+20]		;fHigh = ST0 | stack: alphas(i),y(i),error,cost
+lowCheck:
 endLoop:
-	add	eax,1
-	loop	LOOP
-	;arrayToFPU	[edx+28],2
-	;fst	dword [edx+20]
-	fld	dword [fHigh]
-	fst	dword [edx+20]
-	fild	dword [iHigh]
-	fst	dword [edx+16]
-	;fstp	ST0
-	;fst	dword [edx+16]	
-end:	pop	ebx
-	mov     esp,ebp
+	fstp	ST0			;stack: y(i),error,cost
+	fstp	ST0			;stack: error,cost
+	dec	ecx			;counter--
+	jnz	LOOP			;if counter = 0 -> end
+	fild	dword [ebx+12]
+	fst	dword [edx+4]		;ptr->iHigh = iHigh
+	fild	dword [ebx+8]
+	fst	dword [edx+8]		;ptr->iLow = iLow
+end:	
+	mov	esp,[ebx+24]
+	lea	esp,[esp+28]
+	pop	ebx
 	pop     ebp
 	ret
 
