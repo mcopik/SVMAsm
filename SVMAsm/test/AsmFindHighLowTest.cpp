@@ -43,10 +43,10 @@ protected:
 		delete ret;
 	}
 };
-/*
+
 TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 	float yArray1[] = {1,1,1,1};
-	float alphaArray1[] = {0.05,0.05,0.1,0.0};
+	float alphaArray1[] = {0.05,0.05,0.09999,0.012};
 	float errorArray1[] = {1.1,1.14,1.12,1.13};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 4;
@@ -63,7 +63,7 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 		ASSERT_EQ(threadsAsmData[i].iLow,1);
 	}
 	float yArray2[] = {1,1,-1,-1};
-	float alphaArray2[] = {0.0,0.067,0.098,0.0354};
+	float alphaArray2[] = {0.01,0.067,0.098,0.0354};
 	float errorArray2[] = {0.095,0.093,0.025,0.013};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 4;
@@ -77,11 +77,11 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(threadsAsmData[0].iHigh,3);
-		ASSERT_EQ(threadsAsmData[i].iLow,1);
+		ASSERT_EQ(threadsAsmData[i].iLow,0);
 	}
 	float yArray3[] = {1,-1,-1,1,1,-1};
-	float alphaArray3[] = {0.05,0.001,0.067,0.098,0.0354,0.9999};
-	float errorArray3[] = {0.093,0.14,0.085,0.013,0.03,0.092};
+	float alphaArray3[] = {0.05,0.0011,0.067,0.098,0.0354,0.0989999};
+	float errorArray3[] = {0.093,0.014,0.085,0.013,0.03,0.094};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 6;
 		threadsAsmData[i].yArray = yArray3;
@@ -94,11 +94,11 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(threadsAsmData[0].iHigh,3);
-		ASSERT_EQ(threadsAsmData[i].iLow,0);
+		ASSERT_EQ(threadsAsmData[i].iLow,5);
 	}
 }
 
-*/
+
 TEST_F(AsmFindHighLowTest,testAlpha0) {
 	//check iHigh
 	float yArray1[] = {1,1,1,1};
