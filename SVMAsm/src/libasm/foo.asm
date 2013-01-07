@@ -71,7 +71,7 @@ LOOP:
 	
 	;only testAlpha0 should pass!
 	;jmp	alpha0
-	
+	jmp	alphaCost
 ;check if error < alpha < cost-error
 middle:	
 	clc
@@ -133,6 +133,11 @@ alphaCost:
 	;jmp	alphaCostYPos
 ;if y(i) < 0 -> check iHigh
 alphaCostYNeg:
+	;mov	dword [edx+4],0
+	;fstsw	word [edx+4]
+	;fild	dword [edx+4]
+	fld	ST1
+	fstp	dword [edx+4]
 	mov	eax,1
 	mov	dword [ebx],eax		;check iHigh
 	jmp	highCheck
@@ -188,8 +193,8 @@ endLoop:
 	fstp	ST0			;stack: error,cost
 	dec	ecx			;counter--
 	jnz	LOOP			;if counter = 0 -> end
-	fild	dword [ebx+12]
-	fstp	dword [edx+4]		;ptr->iHigh = iHigh
+	;fild	dword [ebx+12]
+	;fstp	dword [edx+4]		;ptr->iHigh = iHigh
 	fild	dword [ebx+8]
 	fstp	dword [edx+8]		;ptr->iLow = iLow
 end:	
@@ -199,6 +204,87 @@ end:
 	pop     ebp
 	ret
 
+;	Input: Pointers to data,size
+;	Output: sum in eax
+;	Finds High and Low alpha
+global computeLinearKernel
+computeLinearKernel:
+   	push    ebp	;save ebp
+	mov     ebp,esp	
+	push	ebx
+	push	ecx
+	push	edx
+	push	eax
+	xor	eax,eax
+	mov	edx,[ebp+8]	;structure
+	lea	esp,[esp-24]	;four numbers+sum+temp_esp
+	mov	ebx,esp		; stack pointer in ebx
+	mov	[ebx+20],esp	;save esp
+	mov	esi,[edx]	; first_ptr in esi
+	mov	edi,[edx+4]	; second_ptr in edi
+	xorps	xmm0,xmm0	; 0 in xmm0
+	mov	ecx,dword [edx+8];get size
+	cmp	ecx,12		;check if size >= 12
+	jb	sum		;less than 12 elements
+	;mov	dword [edx+12],2
+	;jmp	computeKernelEnd
+loop:	
+	movups	xmm2,[esi]
+	movups	xmm3,[edi]
+	movups	xmm4,[esi+16]
+	movups	xmm5,[edi+16]
+	movups	xmm6,[esi+32]
+	movups	xmm7,[edi+32]
+		
+	mulps	xmm2, xmm3
+	mulps	xmm4, xmm5
+	mulps	xmm6, xmm7
+	
+	addps	xmm0,xmm2
+	addps	xmm0,xmm4
+	addps	xmm0,xmm6
+	sub	ecx,12
+	cmp	ecx,12
+	jl	sum
+	add	esi,48
+	add	edi,48
+	jmp	loop
+sum:
+	xor	eax,eax
+	movups	[ebx], xmm0	;4 sums to stack
+	movss	xmm0, [ebx]
+	movss	xmm1, [ebx+4]
+	movss	xmm2, [ebx+8]
+	movss	xmm3, [ebx+12]
+
+	addss	xmm0, xmm1
+	addss	xmm2, xmm3
+	addss	xmm0, xmm2
+	movss	[ebx+16],xmm0
+	movss	[edx+12],xmm0	
+	cmp	ecx,0
+	xorps	xmm0,xmm0
+	jmp	computeKernelEnd
+leftovers:
+	movss	xmm1, [esi]
+	movss	xmm2, [edi]
+	mulss	xmm1,xmm2
+	movss	xmm0,xmm1
+	sub	ecx,1
+	jnz	leftovers	
+computeKernelEnd:
+	mov	eax,dword [ebx+16]	;read data from sum
+	movss	[ebx+16],xmm0		;read data from leftovers
+	add	eax,dword [ebx+16]	;add data
+	mov	dword [edx+12],eax	;save result
+	mov	esp,[ebx+20]
+	lea	esp,[esp+24]
+	pop	eax
+	pop	edx
+	pop	ecx
+	pop	ebx
+	pop     ebp
+	ret
 
 global foo:function
 segment .data
