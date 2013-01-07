@@ -21,13 +21,12 @@ segment .text
 ; ST0 - first operand
 ; ST1 - second operand
 ; ST3 - maximal error
-; value in ST3 is destroyed!
 ; eax = 1 when |ST0-ST1| < error
-%macro equalsWithTolerance 0
-	fsub	ST0,ST1
+%macro equalsWithTolerance 3
+	fsub	%1,%2
 	fabs
-	fcomi	ST0,ST3
-	jb	@@equal
+	fcomi	%1,%3
+	jbe	@@equal
 	jmp	@@notEqual
 @@equal:
 	mov	eax,1
@@ -66,47 +65,48 @@ LOOP:
 	mov	eax,[edx]
 	sub	eax,ecx
 	arrayToFPU	[edx+24],eax ;stack: y(i),error,cost
-	arrayToFPU	[edx+28],eax ;stack: alphas(i),y(i)error,cost
+	arrayToFPU	[edx+28],eax ;stack: alphas(i),y(i),error,cost
 	mov	dword [ebx+4],0
 	mov	dword [ebx],0
 
-	;checks if error < alpha < cost-error
+;checks if error < alpha < cost-error
 middle:	
 	fldz				;stack: 0,alphas(i),y(i),error,cost
 	fadd	ST0,ST3			;add error to low border
 	fcomi	ST0,ST1			;compare low+error > val
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
 	jb	is			;if ST0 < ST1 - may be in interval
-	jmp	second			;second condition
+	jmp	alpha0			;second condition
 is:	
 	fld	ST3			;stack: cost,alphas(i),y(i),error,cost
 	fsub	ST0,ST3			;cost = cost-error
 	fcomi	ST0,ST1			;compare high-error > val
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
-	jb	second			;if ST0 < ST1 - is not in interval
+	jb	alpha0			;if ST0 < ST1 - is not in interval
 	mov	eax,1
 	mov	dword [ebx],eax		;check high condition
 	mov	dword [ebx+4],eax	;check low condition
 	jmp	highCheck		;check conditions
-
-second:	
-	jmp	endLoop
-;	fxch	ST0,ST1		;ST0 is now y(i)
-;	fild	dword	[zeroConst]
-;	fcomi	ST0,ST1		;if ST0 < ST1 - y(i) is positive
-;	fstp	ST0
-;	fxch	ST0,ST1		;revert changes
-;	jb	yPositive
-;	jmp	yNegative
-;yPositive:
-;	fild	dword	[zeroConst]
-;	jmp secondCheck
-;yNegative: 
-;	fld ST3
-;secondCheck:
-;	equalsWithTolerance
-;	cmp	eax,dword [zeroConst]
-;	je	endLoop
+;checks if 0 <= alpha <= error
+alpha0:	
+	fldz				;stack: 0,alphas(i),y(i),error,cost
+	equalsWithTolerance ST0,ST1,ST3 ;check if alphas(i) <= error
+	cmp	eax,0
+	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	je	endLoop			;alphas(i) > error
+	fldz				;stack: 0,alphas(i),y(i),error,cost
+	fcomi	ST0,ST2
+	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	jb	alpha0YPos		;y(i) > 0
+alpha0YNeg:
+	fst	dword [edx+8]
+	mov	eax,1
+	mov	dword [ebx+4],eax	;check iLow
+	jmp	highCheck
+alpha0YPos:
+	mov	eax,1
+	mov	dword [ebx],eax		;check iHigh
+	jmp	highCheck
 
 highCheck:
 	mov	eax,dword [ebx]		;check if flag is set
