@@ -21,19 +21,19 @@ segment .text
 ; ST0 - first operand
 ; ST1 - second operand
 ; ST3 - maximal error
-; eax = 1 when |ST0-ST1| < error
+; eax = 1 when |ST0-ST1| <= error
 %macro equalsWithTolerance 3
 	fsub	%1,%2
 	fabs
 	fcomi	%1,%3
-	jbe	@@equal
-	jmp	@@notEqual
-@@equal:
+	jbe	%%equal
+	jmp	%%notEqual
+%%equal:
 	mov	eax,1
-	jmp	@@finish
-@@notEqual:
+	jmp	%%finish
+%%notEqual:
 	mov	eax,0
-@@finish:
+%%finish:
 	nop
 %endmacro
 
@@ -68,15 +68,20 @@ LOOP:
 	arrayToFPU	[edx+28],eax ;stack: alphas(i),y(i),error,cost
 	mov	dword [ebx+4],0
 	mov	dword [ebx],0
-
-;checks if error < alpha < cost-error
+	
+	;only testAlpha0 should pass!
+	;jmp	alpha0
+	
+;check if error < alpha < cost-error
 middle:	
+	clc
 	fldz				;stack: 0,alphas(i),y(i),error,cost
 	fadd	ST0,ST3			;add error to low border
 	fcomi	ST0,ST1			;compare low+error > val
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
 	jb	is			;if ST0 < ST1 - may be in interval
 	jmp	alpha0			;second condition
+;if alpha > error
 is:	
 	fld	ST3			;stack: cost,alphas(i),y(i),error,cost
 	fsub	ST0,ST3			;cost = cost-error
@@ -87,25 +92,55 @@ is:
 	mov	dword [ebx],eax		;check high condition
 	mov	dword [ebx+4],eax	;check low condition
 	jmp	highCheck		;check conditions
-;checks if 0 <= alpha <= error
+	
+	
+;check if 0 <= alpha <= error
 alpha0:	
+	;only testAlphaMiddle shoudl pass!
+	;jmp	highCheck
 	fldz				;stack: 0,alphas(i),y(i),error,cost
 	equalsWithTolerance ST0,ST1,ST3 ;check if alphas(i) <= error
 	cmp	eax,0
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
-	je	endLoop			;alphas(i) > error
-	fldz				;stack: 0,alphas(i),y(i),error,cost
+	je	alphaCost		;alphas(i) > error
+	fld1				;stack: 0,alphas(i),y(i),error,cost
 	fcomi	ST0,ST2
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
-	jb	alpha0YPos		;y(i) > 0
+	je	alpha0YPos		;y(i) > 0
+;if y(i) < 0 -> check iLow
 alpha0YNeg:
-	fst	dword [edx+8]
 	mov	eax,1
 	mov	dword [ebx+4],eax	;check iLow
-	jmp	highCheck
+	jmp	alphaCost
+;if y(i) > 0 -> check iHigh
 alpha0YPos:
 	mov	eax,1
 	mov	dword [ebx],eax		;check iHigh
+	jmp	alphaCost
+	
+;check if cost-error <= alpha <= cost
+alphaCost:
+	;jmp	highCheck
+	fld	ST3			;stack: cost,alphas(i),y(i),error,cost
+	equalsWithTolerance ST0,ST1,ST3 ;check if |alphas(i)-cost| <= error
+	cmp	eax,0
+	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	je	highCheck		;alphas(i) < cost-error
+	fld1				;stack: 0,alphas(i),y(i),error,cost
+	fcomi	ST0,ST2
+	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	je	alphaCostYPos		;y(i) > 0
+	;jmp	alphaCostYPos
+;if y(i) < 0 -> check iHigh
+alphaCostYNeg:
+	mov	eax,1
+	mov	dword [ebx],eax		;check iHigh
+	jmp	highCheck
+;if y(i) > 0 -> check iLow
+alphaCostYPos:
+	fst	dword [edx+8]
+	mov	eax,1
+	mov	dword [ebx+4],eax	;check iLow
 	jmp	highCheck
 
 highCheck:
@@ -154,9 +189,9 @@ endLoop:
 	dec	ecx			;counter--
 	jnz	LOOP			;if counter = 0 -> end
 	fild	dword [ebx+12]
-	fst	dword [edx+4]		;ptr->iHigh = iHigh
+	fstp	dword [edx+4]		;ptr->iHigh = iHigh
 	fild	dword [ebx+8]
-	fst	dword [edx+8]		;ptr->iLow = iLow
+	fstp	dword [edx+8]		;ptr->iLow = iLow
 end:	
 	mov	esp,[ebx+24]
 	lea	esp,[esp+28]

@@ -46,7 +46,7 @@ protected:
 
 TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 	float yArray1[] = {1,1,1,1};
-	float alphaArray1[] = {0.05,0.05,0.09999,0.012};
+	float alphaArray1[] = {0.05,0.05,0.098,0.012};
 	float errorArray1[] = {1.1,1.14,1.12,1.13};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 4;
@@ -59,7 +59,7 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,0);
+		ASSERT_EQ(threadsAsmData[i].iHigh,0);
 		ASSERT_EQ(threadsAsmData[i].iLow,1);
 	}
 	float yArray2[] = {1,1,-1,-1};
@@ -76,7 +76,7 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,3);
+		ASSERT_EQ(threadsAsmData[i].iHigh,3);
 		ASSERT_EQ(threadsAsmData[i].iLow,0);
 	}
 	float yArray3[] = {1,-1,-1,1,1,-1};
@@ -93,7 +93,7 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,3);
+		ASSERT_EQ(threadsAsmData[i].iHigh,3);
 		ASSERT_EQ(threadsAsmData[i].iLow,5);
 	}
 }
@@ -102,7 +102,7 @@ TEST_F(AsmFindHighLowTest,testMiddleAlpha) {
 TEST_F(AsmFindHighLowTest,testAlpha0) {
 	//check iHigh
 	float yArray1[] = {1,1,1,1};
-	float alphaArray1[] = {0.0,0.000045,0.0,3e-5};
+	float alphaArray1[] = {0.0,0.000045,0.0,0.00003};
 	float errorArray1[] = {1.13,1.14,0.0,2.5};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 4;
@@ -115,7 +115,7 @@ TEST_F(AsmFindHighLowTest,testAlpha0) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,2);
+		ASSERT_EQ(threadsAsmData[i].iHigh,2);
 		ASSERT_EQ(threadsAsmData[i].iLow,-1);
 	}
 	//check iLow
@@ -133,7 +133,7 @@ TEST_F(AsmFindHighLowTest,testAlpha0) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,-1);
+		ASSERT_EQ(threadsAsmData[i].iHigh,-1);
 		ASSERT_EQ(threadsAsmData[i].iLow,2);
 	}
 	//check iLow and iHigh
@@ -151,7 +151,7 @@ TEST_F(AsmFindHighLowTest,testAlpha0) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,2);
+		ASSERT_EQ(threadsAsmData[i].iHigh,2);
 		ASSERT_EQ(threadsAsmData[i].iLow,3);
 	}
 }
@@ -172,7 +172,7 @@ TEST_F(AsmFindHighLowTest,testAlphaCost) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,0);
+		ASSERT_EQ(threadsAsmData[i].iHigh,0);
 		ASSERT_EQ(threadsAsmData[i].iLow,-1);
 	}
 	//check iLow
@@ -190,7 +190,7 @@ TEST_F(AsmFindHighLowTest,testAlphaCost) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,-1);
+		ASSERT_EQ(threadsAsmData[i].iHigh,-1);
 		ASSERT_EQ(threadsAsmData[i].iLow,2);
 	}
 	//check iLow and iHigh
@@ -208,7 +208,7 @@ TEST_F(AsmFindHighLowTest,testAlphaCost) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		ASSERT_EQ(threadsAsmData[0].iHigh,5);
+		ASSERT_EQ(threadsAsmData[i].iHigh,5);
 		ASSERT_EQ(threadsAsmData[i].iLow,2);
 	}
 }
