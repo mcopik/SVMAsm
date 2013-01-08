@@ -172,12 +172,12 @@ TEST_F(AsmFindHighLowTest,testAlphaCost) {
 		pthread_join(threadID[i],nullptr);
 	}
 	for(int i = 0;i < numberOfThreads;++i) {
-		//ASSERT_EQ(threadsAsmData[i].iHigh,0);
-		//ASSERT_EQ(threadsAsmData[i].iLow,-1);
+		ASSERT_EQ(threadsAsmData[i].iHigh,0);
+		ASSERT_EQ(threadsAsmData[i].iLow,-1);
 	}
 	//check iLow
 	float yArray2[] = {1,1,1,1};
-	float alphaArray2[] = {0.1,0.1,0.099,0.0993};
+	float alphaArray2[] = {0.1,0.0999999,0.0999,0.0993};
 	float errorArray2[] = {1.23,0.093,2.095,0.025};
 	for(int i = 0;i < numberOfThreads;++i) {
 		threadsAsmData[i].trainDataSize = 4;
@@ -185,6 +185,7 @@ TEST_F(AsmFindHighLowTest,testAlphaCost) {
 		threadsAsmData[i].alphaArray = alphaArray2;
 		threadsAsmData[i].errorArray = errorArray2;
 	}
+	//(*findHighLow)(&threadsAsmData[0]);
 	for(int i = 0;i < numberOfThreads;++i) {
 		pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsAsmData[i]));
 		pthread_join(threadID[i],nullptr);

@@ -71,7 +71,7 @@ LOOP:
 	
 	;only testAlpha0 should pass!
 	;jmp	alpha0
-	jmp	alphaCost
+	;jmp	alphaCost
 ;check if error < alpha < cost-error
 middle:	
 	clc
@@ -123,12 +123,16 @@ alphaCost:
 	;jmp	highCheck
 	fld	ST3			;stack: cost,alphas(i),y(i),error,cost
 	equalsWithTolerance ST0,ST1,ST3 ;check if |alphas(i)-cost| <= error
+	;mov	eax,1
 	cmp	eax,0
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
 	je	highCheck		;alphas(i) < cost-error
 	fld1				;stack: 0,alphas(i),y(i),error,cost
 	fcomi	ST0,ST2
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
+	
+	;fld	ST0
+	;fstp	dword [edx+4]
 	je	alphaCostYPos		;y(i) > 0
 	;jmp	alphaCostYPos
 ;if y(i) < 0 -> check iHigh
@@ -136,14 +140,14 @@ alphaCostYNeg:
 	;mov	dword [edx+4],0
 	;fstsw	word [edx+4]
 	;fild	dword [edx+4]
-	fld	ST1
-	fstp	dword [edx+4]
+	;fld	ST4
+	;fstp	dword [edx+4]
 	mov	eax,1
 	mov	dword [ebx],eax		;check iHigh
 	jmp	highCheck
 ;if y(i) > 0 -> check iLow
 alphaCostYPos:
-	fst	dword [edx+8]
+	;fst	dword [edx+8]
 	mov	eax,1
 	mov	dword [ebx+4],eax	;check iLow
 	jmp	highCheck
@@ -193,8 +197,8 @@ endLoop:
 	fstp	ST0			;stack: error,cost
 	dec	ecx			;counter--
 	jnz	LOOP			;if counter = 0 -> end
-	;fild	dword [ebx+12]
-	;fstp	dword [edx+4]		;ptr->iHigh = iHigh
+	fild	dword [ebx+12]
+	fstp	dword [edx+4]		;ptr->iHigh = iHigh
 	fild	dword [ebx+8]
 	fstp	dword [edx+8]		;ptr->iLow = iLow
 end:	
