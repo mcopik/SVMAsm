@@ -161,7 +161,7 @@ highCheck:
 	arrayToFPU [edx+32],eax		;stack: error(i),alphas(i),y(i),error,cost
 	fld	dword [ebx+20]		;stack: fHigh,error(i),alphas(i),y(i),error,cost
 	fcomi	ST0,ST1			;compare fHigh and error(i)
-	jnb	highCheckAssign		;set new value
+	jnbe	highCheckAssign		;set new value
 	fstp	ST0			;stack: error(i),alphas(i),y(i),error,cost
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
 	jmp	lowCheck		;check fLow	
