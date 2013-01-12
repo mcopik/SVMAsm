@@ -111,20 +111,30 @@ public:
 			threadsAsmData[i].cachedKernel = cachedKernel;
 			threadsAsmData[i].threadID = i;
 		}
-		threadsAsmData[0].alphaArray[2] = 0.0;
-		threadsAsmData[1].alphaArray[2] = 0.1;
+		//threadsAsmData[0].alphaArray[2] = 0.0;
+		//threadsAsmData[1].alphaArray[2] = 0.1;
 		std::cout << "ASM " << std::endl;
+		//(*findHighLowAsm)(&threadsAsmData[0]);
 		for(int i = 0;i < numberOfThreads;++i) {
 			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLowAsm,(void*)(&threadsAsmData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
 		}
-		std::cout << threadsAsmData[0].trainDataSize << " " << threadsAsmData[1].trainDataSize << std::endl;
-		std::cout << threadsAsmData[0].cost << " " << threadsAsmData[0].error << std::endl;
-		std::cout << threadsAsmData[1].cost << " " << threadsAsmData[1].error << std::endl;
-		//assert(threadsAsmData[0].trainDataSize == 0 && threadsAsmData[1].trainDataSize == 0);
-		std::cout << threadsAsmData[0].cost << " " << threadsAsmData[0].error << std::endl;
-		std::cout << threadsAsmData[1].cost << " " << threadsAsmData[1].error << std::endl;
-		threadsAsmData[0].trainDataSize = 2000;
+		for(int i = 0;i < numberOfThreads;++i) {
+			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+		}
+		
+		for(int i = 0;i < 2;++i) {
+			if(threadsData[i].iHigh != threadsAsmData[i].iHigh) {
+				std::cout << "IHIGH NORM: " << threadsData[i].iHigh << " ASM: " << threadsAsmData[i].iHigh << std::endl;
+				throw std::exception();
+			}
+			if(threadsData[i].iLow != threadsAsmData[i].iLow) {
+				std::cout << "IHIGH NORM: " << threadsData[i].iLow << " ASM: " << threadsAsmData[i].iLow << std::endl;
+				throw std::exception();
+			}
+		}
+		/*threadsAsmData[0].trainDataSize = 2000;
 		threadsAsmData[1].trainDataSize = 2000;
 		threadsAsmData[0].alphaArray[2] = 0.005;
 		threadsAsmData[1].alphaArray[2] = 0.098;
@@ -145,7 +155,7 @@ public:
 		for(int i = 0;i < numberOfThreads;++i) {
 			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
-		}
+		}*/
 		iHigh = threadsData[0].iHigh;
 		iLow = threadsData[0].iLow;
 		for(int i = 1;i < numberOfThreads;++i) {
@@ -193,17 +203,35 @@ public:
 			//updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
 			std::cout << "updatefLow " << (*errorCache)(iLow) << " updatefHigh " << (*errorCache)(iHigh) << std::endl;
 			for(int i = 0;i < numberOfThreads;++i) {
-				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+				
+				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLowAsm,(void*)(&threadsAsmData[i]));//pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
 			}
 
-			iHigh = threadsData[0].iHigh;
-			iLow = threadsData[0].iLow;
+			for(int i = 0;i < numberOfThreads;++i) {
+			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+			}
+			for(int i = 0;i < 2;++i) {
+			if(threadsData[i].iHigh != threadsAsmData[i].iHigh) {
+				std::cout << "IHIGH NORM: " << threadsData[i].iHigh << " ASM: " << threadsAsmData[i].iHigh << std::endl;
+				throw std::exception();
+			}
+			else if(threadsData[i].iLow != threadsAsmData[i].iLow) {
+				std::cout << "IHIGH NORM: " << threadsData[i].iLow << " ASM: " << threadsAsmData[i].iLow << std::endl;
+				throw std::exception();
+			}
+			else {
+				std::cout << "alles ok!" << std::endl;
+			}
+			}
+			iHigh = threadsAsmData[0].iHigh;
+			iLow = threadsAsmData[0].iLow;
 			for(int i = 1;i < numberOfThreads;++i) {
-				if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh+threadDataSize*i)) {
+				if((*errorCache)(iHigh) > (*errorCache)(threadsAsmData[i].iHigh+threadDataSize*i)) {
 					iHigh = threadsData[i].iHigh+threadDataSize*i;
 				}
-				if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow+threadDataSize*i)) {
+				if((*errorCache)(iLow) < (*errorCache)(threadsAsmData[i].iLow+threadDataSize*i)) {
 					iLow = threadsData[i].iLow+threadDataSize*i;
 				}
 			}
