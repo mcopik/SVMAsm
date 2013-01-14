@@ -45,6 +45,48 @@ segment .text
 	nop
 %endmacro
 
+; label nr label_jmp cachedKernelAdr XAdr offset_out
+%macro getKernel 5
+%1:
+	add	eax,1
+	push	eax
+	mov	ecx,dword [edx+%4]	; cachedKernelHigh
+	imul	eax,4
+	add	ecx,eax			; cachedKernelHigh[i]
+	pop	eax
+	fld	dword [ecx]
+	fld1
+	fchs
+	fcomi	ST0,ST1
+	fstp	ST0
+	fstp	dword [ebx+4*%2]
+	jne	%3
+	lea	esp,[esp-4]		; result
+	push	dword [ebx+32]		; number of features
+	mov	ecx,dword [ebx+32]	; number of features
+	imul	ecx,eax			; x offset
+	imul	ecx,4
+	add	edi,ecx			; X[i]
+	push	edi
+	sub	edi,ecx
+	push	dword [ebx+%5]		; X[iHigh]
+	push	esp
+	call	computeLinearKernel
+	lea	esp,[esp+16]
+	push	eax
+	mov	eax,[esp+4]
+	mov	dword [ebx+4*%2],eax	; high kernel 0
+	pop	eax
+	push	eax
+	fld	dword [ebx+4*%2]
+	mov	ecx,dword [edx+%4]
+	imul	eax,4
+	add	ecx,eax
+	fstp	dword [ecx]		; save cached kernel
+	pop	eax
+	lea	esp,[esp+4]
+%endmacro
+
 ;	Input: ParallelAsmData struct
 ;	Output: modifications in struct
 ;	Finds High and Low alpha
@@ -327,20 +369,7 @@ updateErrorCache:
 	lea	esp,[esp-64]		; 4 places for kernel High and 4 for Low
 	mov	ebx,esp			; stack pointer in ebx
 	mov	[ebx+60],esp		; save esp
-	
-	mov	eax,dword [edx+36]	; load errorUpdateHigh
-	mov	dword [ebx],eax		; save errorUpdateHigh 4 times on stack
-	mov	dword [ebx+4],eax		
-	mov	dword [ebx+8],eax		
-	mov	dword [ebx+12],eax		
-	movups	xmm1,[ebx]		; xmm1 - errorUpdateHigh
-	mov	eax,dword [edx+40]	; load errorUpdateLow
-	mov	dword [ebx+16],eax	; save errorUpdateLow 4 times on stack
-	mov	dword [ebx+20],eax		
-	mov	dword [ebx+24],eax		
-	mov	dword [ebx+28],eax	
-	movups	xmm3,[ebx+16]		; xmm3 - errorUpdateLow
-	
+		
 	mov	eax,dword [edx+56]
 	mov	dword [ebx+32],eax	; number of features
 	mov	eax,dword [edx+60]
@@ -369,165 +398,59 @@ updateErrorCache:
 	sub	edi,ecx
 
 	cmp	ecx,4
-	jl	errorLeftovers
+	jl	errorEnd
 	
-errorLoop:
+
+errorLoop:	
 	mov	eax,dword [edx]
 	sub	eax,dword [ebx+56]	; eax - iteration number
-cacheHigh0:
-	push	eax
-	mov	ecx,dword [edx+48]	; cachedKernelHigh
-	imul	eax,4
-	add	ecx,eax			; cachedKernelHigh[i]
-	pop	eax
-	fld	dword [ecx]
-	fld1
-	fchs
-	fcomi	ST0,ST1
-	fstp	ST0
-	fstp	dword [ebx]
-	jne	cacheHigh1
-	lea	esp,[esp-4]		; result
-	push	dword [ebx+32]		; number of features
-	mov	ecx,dword [ebx+32]	; number of features
-	imul	ecx,eax			; x offset
-	imul	ecx,4
-	add	edi,ecx			; X[i]
-	push	edi
-	sub	edi,ecx
-	push	dword [ebx+48]		; X[iHigh]
-	push	esp
-	call	computeLinearKernel
-	lea	esp,[esp+16]
-	push	eax
-	mov	eax,[esp+4]
-	mov	dword [ebx],eax		; high kernel 0
-	pop	eax
-	push	eax
-	fld	dword [ebx]
-	mov	ecx,dword [edx+48]
-	imul	eax,4
-	add	ecx,eax
-	fstp	dword [ecx]		; save cached kernel
-	pop	eax
-	lea	esp,[esp+4]
-cacheHigh1:
-	add	eax,1
-	push	eax
-	mov	ecx,dword [edx+48]	; cachedKernelHigh
-	imul	eax,4
-	add	ecx,eax			; cachedKernelHigh[i]
-	pop	eax
-	fld	dword [ecx]
-	fld1
-	fchs
-	fcomi	ST0,ST1
-	fstp	ST0
-	fstp	dword [ebx+4]
-	jne	cacheHigh2
-	lea	esp,[esp-4]		; result
-	push	dword [ebx+32]		; number of features
-	mov	ecx,dword [ebx+32]	; number of features
-	imul	ecx,eax			; x offset
-	imul	ecx,4
-	add	edi,ecx			; X[i]
-	push	edi
-	sub	edi,ecx
-	push	dword [ebx+48]		; X[iHigh]
-	push	esp
-	call	computeLinearKernel
-	lea	esp,[esp+16]
-	push	eax
-	mov	eax,[esp+4]
-	mov	dword [ebx+4],eax	; high kernel 1
-	pop	eax
-	push	eax
-	fld	dword [ebx+4]
-	mov	ecx,dword [edx+48]
-	imul	eax,4
-	add	ecx,eax
-	fstp	dword [ecx]		; save cached kernel
-	pop	eax
-	lea	esp,[esp+4]
-cacheHigh2:
-	add	eax,1
-	push	eax
-	mov	ecx,dword [edx+48]	; cachedKernelHigh
-	imul	eax,4
-	add	ecx,eax			; cachedKernelHigh[i]
-	pop	eax
-	fld	dword [ecx]
-	fld1
-	fchs
-	fcomi	ST0,ST1
-	fstp	ST0
-	fstp	dword [ebx+8]
-	jne	cacheHigh3
-	lea	esp,[esp-4]		; result
-	push	dword [ebx+32]		; number of features
-	mov	ecx,dword [ebx+32]	; number of features
-	imul	ecx,eax			; x offset
-	imul	ecx,4
-	add	edi,ecx			; X[i]
-	push	edi
-	sub	edi,ecx
-	push	dword [ebx+48]		; X[iHigh]
-	push	esp
-	call	computeLinearKernel
-	lea	esp,[esp+16]
-	push	eax
-	mov	eax,[esp+4]
-	mov	dword [ebx+8],eax	; high kernel 1
-	pop	eax
-	push	eax
-	fld	dword [ebx+8]
-	mov	ecx,dword [edx+48]
-	imul	eax,4
-	add	ecx,eax
-	fstp	dword [ecx]		; save cached kernel
-	pop	eax
-	lea	esp,[esp+4]
-cacheHigh3:
-	add	eax,1
-	push	eax
-	mov	ecx,dword [edx+48]	; cachedKernelHigh
-	imul	eax,4
-	add	ecx,eax			; cachedKernelHigh[i]
-	pop	eax
-	fld	dword [ecx]
-	fld1
-	fchs
-	fcomi	ST0,ST1
-	fstp	ST0
-	fstp	dword [ebx+12]
-	jne	cacheLow0
-	lea	esp,[esp-4]		; result
-	push	dword [ebx+32]		; number of features
-	mov	ecx,dword [ebx+32]	; number of features
-	imul	ecx,eax			; x offset
-	imul	ecx,4
-	add	edi,ecx			; X[i]
-	push	edi
-	sub	edi,ecx
-	push	dword [ebx+48]		; X[iHigh]
-	push	esp
-	call	computeLinearKernel
-	lea	esp,[esp+16]
-	push	eax
-	mov	eax,[esp+4]
-	mov	dword [ebx+12],eax	; high kernel 1
-	pop	eax
-	push	eax
-	fld	dword [ebx+12]
-	mov	ecx,dword [edx+48]
-	imul	eax,4
-	add	ecx,eax
-	fstp	dword [ecx]		; save cached kernel
-	pop	eax
-	lea	esp,[esp+4]
+	sub	eax,1
+	getKernel cacheHigh0,0,cacheHigh1,48,48
+	;add	eax,1
+	getKernel cacheHigh1,1,cacheHigh2,48,48
+	;add	eax,1
+	getKernel cacheHigh2,2,cacheHigh3,48,48
+	;add	eax,1
+	getKernel cacheHigh3,3,cacheLow0,48,48
 cacheLow0:
+	sub	eax,4
+	getKernel cacheLow0_,4,cacheLow1,44,52
+	;add	eax,1
+	getKernel cacheLow1,5,cacheLow2,44,52
+	;add	eax,1
+	getKernel cacheLow2,6,cacheLow3,44,52
+	;add	eax,1
+	getKernel cacheLow3,7,errorLoopBody,44,52
+	sub	eax,3
+errorLoopBody:
 	movups	xmm2,[ebx]		; high cache
-errorLeftovers:	
+	movups	xmm4,[ebx+16]		; low cache	
+	mov	eax,dword [edx+36]	; load errorUpdateHigh
+	mov	dword [ebx],eax		; save errorUpdateHigh 4 times on stack
+	mov	dword [ebx+4],eax		
+	mov	dword [ebx+8],eax		
+	mov	dword [ebx+12],eax		
+	movups	xmm1,[ebx]		; xmm1 - errorUpdateHigh
+	mov	eax,dword [edx+40]	; load errorUpdateLow
+	mov	dword [ebx+16],eax	; save errorUpdateLow 4 times on stack
+	mov	dword [ebx+20],eax		
+	mov	dword [ebx+24],eax		
+	mov	dword [ebx+28],eax	
+	movups	xmm3,[ebx+16]		; xmm3 - errorUpdateLow
+	movups	xmm0,[esi]		; xmm0 - error
+	mulps	xmm1,xmm2
+	mulps	xmm3,xmm4
+	addps	xmm0,xmm1
+	addps	xmm0,xmm3
+	movups	[esi],xmm0		; save updated error
+	add	edi,16
+	add	esi,16
+	mov	ecx,dword [ebx+56]	; counter
+	sub	ecx,4
+	mov	dword [ebx+56],ecx
+	cmp	ecx,0
+	jne	errorLoop
+errorEnd:	
 	mov	esp,[ebx+60]		;retrieve esp
 	lea	esp,[esp+64]		;free memory
 	pop	eax
