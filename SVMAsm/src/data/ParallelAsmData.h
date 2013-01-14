@@ -12,11 +12,11 @@ public:
 	/**
 	 * Thread saves here iHigh value.
 	 */
-	float iHigh;
+	unsigned int iHigh;
 	/**
 	 * Thread saves here iLow value.
 	 */
-	float iLow;
+	unsigned int iLow;
 	/**
 	 * Number of this thread.
 	 * Determines part of data.
@@ -46,18 +46,6 @@ public:
 	 */
 	float * errorArray;
 	/**
-	 * Pointer to kernel class.
-	 */
-	AbstractKernel<float> * kernel;
-	/**
-	 * Training matrix.
-	 */
-	Matrix<float> * X;
-	/**
-	 * Matrix with cached kernel.
-	 */
-	Matrix<float> * cachedKernel;
-	/**
 	 * Value of model->Y(iHigh)*model->alphas(iHigh) - highOld.
 	 */
 	float errorUpdateHigh;
@@ -65,6 +53,18 @@ public:
 	 * Value of model->Y(iLow)*model->alphas(iLow) - lowOld.
 	 */
 	float errorUpdateLow;
+	/**
+	 * Matrix with cached kernel.
+	 */
+	float * cachedKernelLow;
+	float * cachedKernelHigh;
+	/**
+	 * Training matrix.
+	 */
+	float * X;
+	int	numberOfFeatures;
+	int	numberOfTrainExamples;
+	int	offset;
 };
 
 
