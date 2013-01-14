@@ -30,7 +30,7 @@ int main()
     //testSharedLibrary("./libcpp.so",RTLD_LAZY,"foo");
     //testSMO();
     //testThreads();    std::ifstream file("../test/gaussianKernelTest3Y");
-	LinearKernel<float> kernel;
+    LinearKernel<float> kernel;
     Vector<float> y = Vector<float>::loadVector("../test/testDataSpam500/Y");
     Matrix<float> X = Matrix<float>::loadMatrix("../test/testDataSpam500/X");
     Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testDataSpam500/Xtest");
@@ -49,16 +49,16 @@ int main()
     //	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
 
     std::cout << "b: " << classifier.model->b << std::endl;
-    /*for(int i = 0;i < X.rows();++i)
+   //.. for(int i = 0;i < X.rows();++i)
     //	std::cout << i << " " << classifier.model->alphas(i) << std::endl;
     Vector<float> predicts = classifier.predict(Xtest);
-	int counter = 0;
+    int counter = 0;
     for(unsigned int i = 0;i < predicts.size();++i)
     	if(predicts(i) == Ytest(i))
     		++counter;
     std::cout << counter << std::endl;
     std::cout << ((float)counter)/predicts.size() << std::endl;
-*/
+
     return 0;
 }
 

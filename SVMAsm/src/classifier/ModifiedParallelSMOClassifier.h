@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <pthread.h>
 #include <stddef.h>
+#include <time.h>
 #include "AbstractClassifier.h"
 #include "../data/TrainedModel.h"
 #include "../data/TrainData.h"
@@ -58,8 +59,12 @@ public:
 		cachedKernel = new Matrix<dataType>(train.X.rows(),train.X.rows());
 		std::fill_n(cachedKernel->matrixData(),cachedKernel->rows()
 				*cachedKernel->cols(),-1);
+		Matrix<dataType> * cachedKernel2 = new Matrix<dataType>(train.X.rows(),train.X.rows());
+		std::fill_n(cachedKernel2->matrixData(),cachedKernel2->rows()
+				*cachedKernel2->cols(),-1);
 		kernel = &_kernel;
 		errorCache = new Vector<dataType>(train.X.rows());
+		Vector<dataType> * errorCache2 = new Vector<dataType>(train.X.rows());
 		dataType fHigh = 0.0;
 		int iHigh = 0;
 		dataType fLow = 0.0;
@@ -71,11 +76,14 @@ public:
 		 */
 		for(unsigned int i = 0;i < errorCache->size();++i) {
 			(*errorCache)(i) = -1*train.Y(i);
+			(*errorCache2)(i) = -1*train.Y(i);
 		}
 		void * asmHandle = dlopen("./libasm.so",RTLD_LAZY);
 		assert(asmHandle != nullptr);
 		dlerror();
 		threadFunction findHighLowAsm = (threadFunction) dlsym(asmHandle, "findHighLow");
+		assert(findHighLowAsm != nullptr);
+		threadFunction updateErrorCacheAsm = (threadFunction) dlsym(asmHandle, "updateErrorCache");
 		assert(findHighLowAsm != nullptr);
 		
 		
@@ -106,10 +114,11 @@ public:
 			threadsAsmData[i].errorArray = errorCache->vectorData(threadDataSize*i);
 			threadsAsmData[i].cost = C;
 			threadsAsmData[i].error = error;
-			threadsAsmData[i].kernel = kernel;
-			threadsAsmData[i].X = &model->X;
-			threadsAsmData[i].cachedKernel = cachedKernel;
+			threadsAsmData[i].X = model->X(0);
 			threadsAsmData[i].threadID = i;
+			threadsAsmData[i].numberOfFeatures = model->X.cols();
+			threadsAsmData[i].numberOfTrainExamples = model->X.rows();
+			threadsAsmData[i].offset = i*threadDataSize*4;
 		}
 		//threadsAsmData[0].alphaArray[2] = 0.0;
 		//threadsAsmData[1].alphaArray[2] = 0.1;
@@ -118,21 +127,6 @@ public:
 		for(int i = 0;i < numberOfThreads;++i) {
 			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLowAsm,(void*)(&threadsAsmData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
-		}
-		for(int i = 0;i < numberOfThreads;++i) {
-			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
-			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
-		}
-		
-		for(int i = 0;i < 2;++i) {
-			if(threadsData[i].iHigh != threadsAsmData[i].iHigh) {
-				std::cout << "IHIGH NORM: " << threadsData[i].iHigh << " ASM: " << threadsAsmData[i].iHigh << std::endl;
-				throw std::exception();
-			}
-			if(threadsData[i].iLow != threadsAsmData[i].iLow) {
-				std::cout << "IHIGH NORM: " << threadsData[i].iLow << " ASM: " << threadsAsmData[i].iLow << std::endl;
-				throw std::exception();
-			}
 		}
 		/*threadsAsmData[0].trainDataSize = 2000;
 		threadsAsmData[1].trainDataSize = 2000;
@@ -156,14 +150,14 @@ public:
 			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
 		}*/
-		iHigh = threadsData[0].iHigh;
-		iLow = threadsData[0].iLow;
+		iHigh = threadsAsmData[0].iHigh;
+		iLow = threadsAsmData[0].iLow;
 		for(int i = 1;i < numberOfThreads;++i) {
-			if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh+threadDataSize*i)) {
-				iHigh = threadsData[i].iHigh+threadDataSize*i;
+			if((*errorCache)(iHigh) > (*errorCache)(threadsAsmData[i].iHigh+threadDataSize*i)) {
+				iHigh = threadsAsmData[i].iHigh+threadDataSize*i;
 			}
-			if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow+threadDataSize*i)) {
-				iLow = threadsData[i].iLow+threadDataSize*i;
+			if((*errorCache)(iLow) < (*errorCache)(threadsAsmData[i].iLow+threadDataSize*i)) {
+				iLow = threadsAsmData[i].iLow+threadDataSize*i;
 			}
 		}
 		fLow = (*errorCache)(iLow);
@@ -186,7 +180,7 @@ public:
 		//if(0 < -1*error)
 		std::cout << "C " << C << " error " << error << std::endl;
 		int nr_iter = 0;
-
+		clock_t startClock = clock();
 		do {
 			for(int i = 0;i < numberOfThreads;++i) {
 				threadsData[i].errorUpdateHigh = model->Y(iHigh)*
@@ -195,54 +189,78 @@ public:
 						(model->alphas(iLow) - alphaLowOld);
 				threadsData[i].iHigh = iHigh;
 				threadsData[i].iLow = iLow;
+				threadsAsmData[i].errorUpdateHigh = model->Y(iHigh)*
+						(model->alphas(iHigh) - alphaHighOld);
+				threadsAsmData[i].errorUpdateLow = model->Y(iLow)*
+						(model->alphas(iLow) - alphaLowOld);
+				threadsAsmData[i].iHigh = iHigh;
+				threadsAsmData[i].iLow = iLow;
+				threadsAsmData[i].cachedKernelHigh = (*cachedKernel)(iHigh);
+				threadsAsmData[i].cachedKernelLow = (*cachedKernel)(iLow);
 			}
+			//for(int i = 0;i < numberOfThreads;++i) {
+			//	pthread_create(&(threadID[i]),NULL,(void* (*)(void*))updateErrorCache,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+			//	pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+			//}
 			for(int i = 0;i < numberOfThreads;++i) {
-				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))updateErrorCache,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))updateErrorCacheAsm,(void*)(&threadsAsmData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
 			}
+			/*
+			for(int i = 0;i < errorCache2->size();i++) {
+				if(std::abs((*errorCache)(i) -(*errorCache2)(i)) >= 0.01) {
+					std::cout << nr_iter << " " << i << " " << (*errorCache)(i) << " " << (*errorCache2)(i) << std::endl;
+					std::cout << (*cachedKernel)(iHigh,i) << " " << (*cachedKernel2)(iHigh,i)  << std::endl;
+					std::cout << iHigh << std::endl;
+					throw std::exception();
+				}
+			}*/
+			//std::cout << "SPEC " << (*errorCache)(0) << " " << (*errorCache)(1) << " " << (*errorCache)(2) << " " << (*errorCache)(3) <<std::endl;
+			//std::cout << "SPEC " << (*errorCache)(4) << " " << (*errorCache)(5) << " " << (*errorCache)(6) << " " << (*errorCache)(7) <<std::endl;
+			//std::cout << "SPEC " << (*errorCache)(2000) << " " << (*errorCache)(2001) << " " << (*errorCache)(2002) << " "<< (*errorCache)(2003)<< std::endl;
 			//updateErrorCache(iHigh,iLow,alphaHighOld,alphaLowOld);
-			std::cout << "updatefLow " << (*errorCache)(iLow) << " updatefHigh " << (*errorCache)(iHigh) << std::endl;
+			//std::cout << "updatefLow " << (*errorCache)(iLow) << " updatefHigh " << (*errorCache)(iHigh) << std::endl;
 			for(int i = 0;i < numberOfThreads;++i) {
 				
 				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLowAsm,(void*)(&threadsAsmData[i]));//pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
 			}
-
-			for(int i = 0;i < numberOfThreads;++i) {
-			pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
-			pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
-			}
-			for(int i = 0;i < 2;++i) {
-			if(threadsData[i].iHigh != threadsAsmData[i].iHigh) {
-				std::cout << "IHIGH NORM: " << threadsData[i].iHigh << " ASM: " << threadsAsmData[i].iHigh << std::endl;
-				throw std::exception();
-			}
-			else if(threadsData[i].iLow != threadsAsmData[i].iLow) {
-				std::cout << "IHIGH NORM: " << threadsData[i].iLow << " ASM: " << threadsAsmData[i].iLow << std::endl;
-				throw std::exception();
-			}
-			else {
-				std::cout << "alles ok!" << std::endl;
-			}
-			}
+			
 			iHigh = threadsAsmData[0].iHigh;
 			iLow = threadsAsmData[0].iLow;
 			for(int i = 1;i < numberOfThreads;++i) {
 				if((*errorCache)(iHigh) > (*errorCache)(threadsAsmData[i].iHigh+threadDataSize*i)) {
-					iHigh = threadsData[i].iHigh+threadDataSize*i;
+					iHigh = threadsAsmData[i].iHigh+threadDataSize*i;
 				}
 				if((*errorCache)(iLow) < (*errorCache)(threadsAsmData[i].iLow+threadDataSize*i)) {
-					iLow = threadsData[i].iLow+threadDataSize*i;
+					iLow = threadsAsmData[i].iLow+threadDataSize*i;
 				}
 			}
+			
+			/*
+			for(int i = 0;i < numberOfThreads;++i) {
+				
+				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
+				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
+			}
+			iHigh = threadsData[0].iHigh;
+			iLow = threadsData[0].iLow;
+			for(int i = 1;i < numberOfThreads;++i) {
+				if((*errorCache)(iHigh) > (*errorCache)(threadsData[i].iHigh+threadDataSize*i)) {
+					iHigh = threadsData[i].iHigh+threadDataSize*i;
+				}
+				if((*errorCache)(iLow) < (*errorCache)(threadsData[i].iLow+threadDataSize*i)) {
+					iLow = threadsData[i].iLow+threadDataSize*i;
+				}
+			}*/
 			fLow = (*errorCache)(iLow);
 			fHigh = (*errorCache)(iHigh);
 			alphaHighOld = model->alphas(iHigh);
 			alphaLowOld = model->alphas(iLow);
 			updateAlpha(iHigh,iLow);
-			std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
-			std::cout << "iHigh " << iHigh << " alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
-			std::cout << "iLow " << iLow << " alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
+			//std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
+			//std::cout << "iHigh " << iHigh << " alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
+			//std::cout << "iLow " << iLow << " alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
 			//std::cout << "yHigh" << model->Y(iHigh) << " yLow " << model->Y(iLow) << std::endl;
 			//std::cout << nr_iter++ << std::endl;
 			//getfLow(fLow,iLow);
@@ -250,6 +268,7 @@ public:
 			//std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
 			//std::cout << fHigh - fLow << std::endl;
 		}while(fLow > (fHigh+2*error));
+		std::cout << ((double)clock()-startClock)/CLOCKS_PER_SEC << std::endl;
 		model->b = (fLow+fHigh)/2;
 
 		delete iHighArray;
@@ -418,9 +437,9 @@ public:
 			for(unsigned int k = 0;k < model->alphas.size();++k)
 				E += model->alphas(k)*kernel->kernelFunction(X(i),model->X(k),model->X.cols())
 				*model->Y(k);
-			std::cout << i << " " << E << std::endl;
+			//std::cout << i << " " << E << std::endl;
 			E -= model->b;
-			std::cout << i << " " << E << std::endl;
+			//std::cout << i << " " << E << std::endl;
 			if(E >= 0) {
 				predicts(i) = 1;
 			}
