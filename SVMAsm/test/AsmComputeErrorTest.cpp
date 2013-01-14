@@ -62,6 +62,7 @@ TEST_F(AsmComputeErrorTest,testErrorSimple) {
 			threadsAsmData[i].cachedKernelLow = &cache[4*3];
 			threadsAsmData[i].numberOfFeatures = 4;
 			threadsAsmData[i].numberOfTrainExamples = 4;
+			threadsAsmData[i].offset = 0;
 	}
 	threadsAsmData[1].errorArray = firstArray2;
 	//threadsAsmData[1].cachedKernelHigh = &cache2[4*2];

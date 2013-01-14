@@ -52,6 +52,7 @@ segment .text
 	push	eax
 	mov	ecx,dword [edx+%4]	; cachedKernelHigh
 	imul	eax,4
+	add	eax,dword [edx+64]	; const offset
 	add	ecx,eax			; cachedKernelHigh[i]
 	pop	eax
 	fld	dword [ecx]
@@ -66,6 +67,7 @@ segment .text
 	mov	ecx,dword [ebx+32]	; number of features
 	imul	ecx,eax			; x offset
 	imul	ecx,4
+	;add	ecx,dword [edx+64]	; const offset
 	add	edi,ecx			; X[i]
 	push	edi
 	sub	edi,ecx
@@ -81,6 +83,7 @@ segment .text
 	fld	dword [ebx+4*%2]
 	mov	ecx,dword [edx+%4]
 	imul	eax,4
+	add	eax,dword [edx+64]	;const offset
 	add	ecx,eax
 	fstp	dword [ecx]		; save cached kernel
 	pop	eax
@@ -366,9 +369,9 @@ updateErrorCache:
 	finit
 	mov	edx,[ebp+8]		; structure
 	;mov	ebp,edx
-	lea	esp,[esp-64]		; 4 places for kernel High and 4 for Low
+	lea	esp,[esp-68]		; 4 places for kernel High and 4 for Low
 	mov	ebx,esp			; stack pointer in ebx
-	mov	[ebx+60],esp		; save esp
+	mov	[ebx+64],esp		; save esp
 		
 	mov	eax,dword [edx+56]
 	mov	dword [ebx+32],eax	; number of features
@@ -396,7 +399,16 @@ updateErrorCache:
 	add	edi,ecx			; X[iLow]
 	mov	dword [ebx+52],edi	; X[iLow]
 	sub	edi,ecx
+	mov	ecx,dword [ebx+32]	; number of features
+	imul	ecx,dword [edx]		; nof*threadDataSize
+	imul	ecx,4
+	imul	ecx,dword [edx+12]	; threadID
+	add	edi,ecx			; X[threadDataSize*threadID]
+	mov	dword [ebx+60],edi	;
+	;sub	edi,ecx
 
+
+	mov	ecx,dword [ebx+56]	; counter - trainDataSize
 	cmp	ecx,4
 	jl	errorEnd
 	
@@ -443,7 +455,7 @@ errorLoopBody:
 	addps	xmm0,xmm1
 	addps	xmm0,xmm3
 	movups	[esi],xmm0		; save updated error
-	add	edi,16
+	;add	edi,16
 	add	esi,16
 	mov	ecx,dword [ebx+56]	; counter
 	sub	ecx,4
@@ -451,8 +463,8 @@ errorLoopBody:
 	cmp	ecx,0
 	jne	errorLoop
 errorEnd:	
-	mov	esp,[ebx+60]		;retrieve esp
-	lea	esp,[esp+64]		;free memory
+	mov	esp,[ebx+64]		;retrieve esp
+	lea	esp,[esp+68]		;free memory
 	pop	eax
 	pop	edx
 	pop	ecx

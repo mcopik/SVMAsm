@@ -10,7 +10,7 @@
 #include <dlfcn.h>
 #include <random>
 #include "gtest/gtest.h"
-
+#include "../src/data/Matrix.h"
 
 struct kernelData {
 public:
@@ -50,8 +50,8 @@ protected:
 };
 
 TEST_F(AsmComputeKernelTest,testKernelSimple) {
-	int firstArray1[] = {1,1,1,1,1,1,1,1,1,1,1,1};
-	int secondArray1[] = {1,1,1,1,1,1,1,1,1,1,1,1};
+	float firstArray1[] = {1,1,1,1,1,1,1,1,1,1,1,1};
+	float secondArray1[] = {1,1,1,1,1,1,1,1,1,1,1,1};
 	for(int i = 0;i < numberOfThreads;++i) {
 		data[i].size = 12;
 		data[i].first = firstArray1;
@@ -64,8 +64,8 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(data[i].result,12);
 	}
-	int firstArray2[] = {1,2,3,4,5,6,7,8,9,10,11,12};
-	int secondArray2[] = {9,8,7,0,0,0,0,0,0,0,0,0};
+	float firstArray2[] = {1,2,3,4,5,6,7,8,9,10,11,12};
+	float secondArray2[] = {9,8,7,0,0,0,0,0,0,0,0,0};
 	for(int i = 0;i < numberOfThreads;++i) {
 		data[i].size = 12;
 		data[i].first = firstArray2;
@@ -78,8 +78,8 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(data[i].result,46);
 	}
-	int firstArray3[] = {1,2,3,4,5,6,7,8,9,10,11,12};
-	int secondArray3[] = {1,-1,1,-1,1,-1,1,-1,1,-1,1,-1};
+	float firstArray3[] = {1,2,3,4,5,6,7,8,9,10,11,12};
+	float secondArray3[] = {1,-1,1,-1,1,-1,1,-1,1,-1,1,-1};
 	for(int i = 0;i < numberOfThreads;++i) {
 		data[i].size = 12;
 		data[i].first = firstArray3;
@@ -92,8 +92,8 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(data[i].result,-6);
 	}
-	int firstArray4[] = {1,2,3,4,5,6};
-	int secondArray4[] = {1,-1,1,-1,1,-1};
+	float firstArray4[] = {1,2,3,4,5,6};
+	float secondArray4[] = {1,-1,1,-1,1,-1};
 	for(int i = 0;i < numberOfThreads;++i) {
 		data[i].size = 6;
 		data[i].first = firstArray4;
@@ -121,9 +121,9 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 		ASSERT_EQ(data[i].result,94);
 	}
 	
-	int * firstArray6 = nullptr;
-	int * secondArray6 = nullptr;
-	int result = 0;
+	float * firstArray6 = nullptr;
+	float * secondArray6 = nullptr;
+	float result = 0;
 	int size;
 	std::mt19937	rng;
 	uint32_t	seed;
@@ -132,8 +132,8 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 	for(int j = 0;j < 5;++j) {
 		size = 960;//uint_dist(rng);
 		result = 0;
-		firstArray6 = new int[size];
-		secondArray6 = new int[size];
+		firstArray6 = new float[size];
+		secondArray6 = new float[size];
 		for(int i = 0;i < size;++i) {
 			firstArray6[i] = uint_dist(rng) % 2 == 0 ? 1 : 0;
 			secondArray6[i] = uint_dist(rng) %  2== 0 ? 1 : 0;
@@ -153,5 +153,19 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 		}
 		delete	firstArray6;
 		delete	secondArray6;
+	}
+	
+	Matrix<float> X = Matrix<float>::loadMatrix("testDataSpam500/X");
+	for(int i = 0;i < numberOfThreads;++i) {
+		data[i].size = X.cols();
+		data[i].first = X(0);
+		data[i].second = X(455);
+	}
+	for(int i = 0;i < numberOfThreads;++i) {
+		pthread_create(&(threadID[i]),NULL,(void* (*)(void*))computeKernel,(void*)(&data[i]));
+		pthread_join(threadID[i],nullptr);
+	}
+	for(int i = 0;i < numberOfThreads;++i) {
+		ASSERT_EQ(data[i].result,9);
 	}
 }
