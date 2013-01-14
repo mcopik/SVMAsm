@@ -50,8 +50,8 @@ protected:
 };
 
 TEST_F(AsmComputeKernelTest,testKernelSimple) {
-	float firstArray1[] = {1,1,1,1,1,1,1,1,1,1,1,1};
-	float secondArray1[] = {1,1,1,1,1,1,1,1,1,1,1,1};
+	int firstArray1[] = {1,1,1,1,1,1,1,1,1,1,1,1};
+	int secondArray1[] = {1,1,1,1,1,1,1,1,1,1,1,1};
 	for(int i = 0;i < numberOfThreads;++i) {
 		data[i].size = 12;
 		data[i].first = firstArray1;
@@ -64,8 +64,8 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(data[i].result,12);
 	}
-	float firstArray2[] = {1,2,3,4,5,6,7,8,9,10,11,12};
-	float secondArray2[] = {9,8,7,0,0,0,0,0,0,0,0,0};
+	int firstArray2[] = {1,2,3,4,5,6,7,8,9,10,11,12};
+	int secondArray2[] = {9,8,7,0,0,0,0,0,0,0,0,0};
 	for(int i = 0;i < numberOfThreads;++i) {
 		data[i].size = 12;
 		data[i].first = firstArray2;
@@ -78,8 +78,8 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(data[i].result,46);
 	}
-	float firstArray3[] = {1,2,3,4,5,6,7,8,9,10,11,12};
-	float secondArray3[] = {1,-1,1,-1,1,-1,1,-1,1,-1,1,-1};
+	int firstArray3[] = {1,2,3,4,5,6,7,8,9,10,11,12};
+	int secondArray3[] = {1,-1,1,-1,1,-1,1,-1,1,-1,1,-1};
 	for(int i = 0;i < numberOfThreads;++i) {
 		data[i].size = 12;
 		data[i].first = firstArray3;
@@ -92,8 +92,8 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 	for(int i = 0;i < numberOfThreads;++i) {
 		ASSERT_EQ(data[i].result,-6);
 	}
-	float firstArray4[] = {1,2,3,4,5,6};
-	float secondArray4[] = {1,-1,1,-1,1,-1};
+	int firstArray4[] = {1,2,3,4,5,6};
+	int secondArray4[] = {1,-1,1,-1,1,-1};
 	for(int i = 0;i < numberOfThreads;++i) {
 		data[i].size = 6;
 		data[i].first = firstArray4;
@@ -121,9 +121,9 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 		ASSERT_EQ(data[i].result,94);
 	}
 	
-	float * firstArray6 = nullptr;
-	float * secondArray6 = nullptr;
-	float result = 0.0f;
+	int * firstArray6 = nullptr;
+	int * secondArray6 = nullptr;
+	int result = 0;
 	int size;
 	std::mt19937	rng;
 	uint32_t	seed;
@@ -131,9 +131,9 @@ TEST_F(AsmComputeKernelTest,testKernelSimple) {
 	std::uniform_int_distribution<uint32_t> uint_dist(1,1000);	
 	for(int j = 0;j < 5;++j) {
 		size = 960;//uint_dist(rng);
-		result = 0.0;
-		firstArray6 = new float[size];
-		secondArray6 = new float[size];
+		result = 0;
+		firstArray6 = new int[size];
+		secondArray6 = new int[size];
 		for(int i = 0;i < size;++i) {
 			firstArray6[i] = uint_dist(rng) % 2 == 0 ? 1 : 0;
 			secondArray6[i] = uint_dist(rng) %  2== 0 ? 1 : 0;
