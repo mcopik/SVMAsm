@@ -403,6 +403,13 @@ cacheHigh0:
 	mov	eax,[esp+4]
 	mov	dword [ebx],eax		; high kernel 0
 	pop	eax
+	push	eax
+	fld	dword [ebx]
+	mov	ecx,dword [edx+48]
+	imul	eax,4
+	add	ecx,eax
+	fstp	dword [ecx]		; save cached kernel
+	pop	eax
 	lea	esp,[esp+4]
 cacheHigh1:
 	add	eax,1
@@ -433,6 +440,13 @@ cacheHigh1:
 	push	eax
 	mov	eax,[esp+4]
 	mov	dword [ebx+4],eax	; high kernel 1
+	pop	eax
+	push	eax
+	fld	dword [ebx+4]
+	mov	ecx,dword [edx+48]
+	imul	eax,4
+	add	ecx,eax
+	fstp	dword [ecx]		; save cached kernel
 	pop	eax
 	lea	esp,[esp+4]
 cacheHigh2:
@@ -465,6 +479,13 @@ cacheHigh2:
 	mov	eax,[esp+4]
 	mov	dword [ebx+8],eax	; high kernel 1
 	pop	eax
+	push	eax
+	fld	dword [ebx+8]
+	mov	ecx,dword [edx+48]
+	imul	eax,4
+	add	ecx,eax
+	fstp	dword [ecx]		; save cached kernel
+	pop	eax
 	lea	esp,[esp+4]
 cacheHigh3:
 	add	eax,1
@@ -495,6 +516,13 @@ cacheHigh3:
 	push	eax
 	mov	eax,[esp+4]
 	mov	dword [ebx+12],eax	; high kernel 1
+	pop	eax
+	push	eax
+	fld	dword [ebx+12]
+	mov	ecx,dword [edx+48]
+	imul	eax,4
+	add	ecx,eax
+	fstp	dword [ecx]		; save cached kernel
 	pop	eax
 	lea	esp,[esp+4]
 cacheLow0:
