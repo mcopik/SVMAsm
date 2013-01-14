@@ -31,10 +31,10 @@ int main()
     //testSMO();
     //testThreads();    std::ifstream file("../test/gaussianKernelTest3Y");
     LinearKernel<float> kernel;
-    Vector<float> y = Vector<float>::loadVector("../test/testDataSpam500/Y");
-    Matrix<float> X = Matrix<float>::loadMatrix("../test/testDataSpam500/X");
-    Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testDataSpam500/Xtest");
-    Vector<float> Ytest = Vector<float>::loadVector("../test/testDataSpam500/Ytest");
+    Vector<float> y = Vector<float>::loadVector("../test/testDataSpamBig/Y");
+    Matrix<float> X = Matrix<float>::loadMatrix("../test/testDataSpamBig/X");
+    Matrix<float> Xtest = Matrix<float>::loadMatrix("../test/testDataSpamBig/Xtest");
+    Vector<float> Ytest = Vector<float>::loadVector("../test/testDataSpamBig/Ytest");
     TrainData<float> data(X,y);
     ModifiedParallelSMOClassifier<float,float> classifier;
     //kernel.setSigma(0.1);
