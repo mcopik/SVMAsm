@@ -458,3 +458,141 @@ errorEnd:
 	pop	ebx
 	pop     ebp
 	ret
+	
+;;
+;Function updates alpha values.
+;@param pointer to ParallelAsmData structure
+;;
+updateAlpha:
+   	push    ebp			;save ebp
+	mov     ebp,esp	
+	push	ebx
+	push	ecx
+	push	edx
+	push	eax			; save registers
+	finit
+	mov	edx,[ebp+8]		; structure
+	lea	esp,[esp-40]		; 7 places + esp
+	mov	ebx,esp			; stack pointer in ebx
+	mov	[ebx+36],esp		; save esp
+	
+	mov	edi,dword [edx+52]	; edi - X array
+	mov	ecx,dword [edx+56]	; number of features
+	imul	ecx,dword [edx+4]	; nof*iHigh
+	imul	ecx,4
+	add	edi,ecx			; X[iHigh]
+	mov	dword [ebx+12],edi	; X[iHigh]	
+	sub	edi,ecx
+	mov	ecx,dword [edx+56]	; number of features
+	imul	ecx,dword [edx+8]	; nof*iLow
+	imul	ecx,4
+	add	edi,ecx			; X[iLow]
+	mov	dword [ebx+16],edi	; X[iLow]
+	sub	edi,ecx
+	
+	mov	esi,dword [edx+28]	; alpha array
+	mov	ecx,dword [edx+4]
+	imul	ecx,4			; iHigh offset
+	add	esi,ecx
+	mov	eax,dword [esi]
+	mov	dword [ebx+28],eax	; alpha(high)
+	sub	esi,ecx
+	
+	mov	ecx,dword [edx+8]
+	imul	ecx,4			; iLow offset
+	add	esi,ecx
+	mov	eax,dword [esi]
+	mov	dword [ebx+32],eax	; alpha(low)
+	sub	esi,ecx
+
+	;compute eta
+	xor	ecx,ecx
+	mov	eax,dword [edx+4]	; iHigh
+	getKernel 0,48,12		; kernel(high,high)
+	getKernel 1,44,16		; kernel(low,low)
+	getKernel 2,44,12		; kernel(low,high)
+	fld	dword [ebx]
+	fld	dword [ebx+4]
+	fld	dword [ebx+8]
+	fadd	ST0,ST0
+	fchs
+	fadd	ST0,ST1
+	fadd	ST0,ST2
+	fstp	dword [ebx+12]		; save eta
+	fstp	ST0
+	fstp	ST0
+	mov	eax,dword [ebx+32]
+	mov	dword [ebx+16],eax	; save alphaLowOld
+	
+	;compute alpha low boundaries
+	mov	edi,dword [edx+24]	; y array	
+	mov	ecx,dword [edx+8]
+	imul	ecx,4			; iLow offset
+	add	edi,ecx
+	fld	dword [edi]		; y(ilow)
+	sub	edi,ecx	
+	mov	ecx,dword [edx+4]
+	imul	ecx,4			; iHigh offset
+	add	edi,ecx
+	fld	dword [edi]		; y(iHigh)
+	sub	edi,ecx
+	fmul	ST0,ST1
+	fldz
+	fcomi	ST0,ST1
+	fstp	ST0
+	fstp	ST0
+	fstp	ST0
+	jb	signPositive		; 0 < y(high)*y(low)?
+signNegative:
+	fld	dword [ebx+32]
+	fld	dword [ebx+28]
+	fchs
+	fadd	ST0,ST1			; alpha(low) - alpha(high)
+	fldz
+	fcomi	ST0,ST1
+	fstp	ST0			; remove zero
+	jbe	signNegAlphaDiffNeg	; 0 < alpha(low) - alpha(high)?
+	;alpha diff positive
+	fstp	dword [ebx+20]		; save lower bound
+	fstp	ST0
+	mov	eax, dword [edx+16]	; load cost
+	mov	dword [ebx+24],eax	; save upper bound
+	jmp	checkEta
+signNegAlphaDiffNeg:
+	fld	dword [edx+16]
+	fadd	ST0,ST1			; alpha(low) - alpha(high) + cost
+	fstp	dword [ebx+24]		; save upper bound
+	fstp	ST0
+	fstp	ST0
+	mov	dword [ebx+20],0	; save lower bound
+	jmp	checkEta
+signPositive:	
+	fld	dword [ebx+32]
+	fld	dword [ebx+28]
+	fadd	ST0,ST1			; alpha(low) + alpha(high)
+	fld	dword [edx+16]		
+	fcomi	ST0,ST1			; cost > alpha(low) + alpha(high) ?
+	jbe	signPosAlphaSumGreater
+	;alpha diff lower than cost
+	fstp	ST0
+	fstp	dword [ebx+28]		; save upper bound
+	fstp	ST0
+	mov	dword [ebx+32],0	; save lower bound
+	jmp	checkEta
+signPosAlphaSumGreater:
+	fsub	ST1,ST0			; alpha(low)+alpha(high)-C
+	fstp	dword [ebx+28]		; save upper bound
+	fsub	dword [ebx+32]		; save lower bound
+	fstp	ST0
+	jmp	checkEta
+	
+checkEta:
+alphaEnd:	
+	mov	esp,[ebx+36]		;retrieve esp
+	lea	esp,[esp+40]		;free memory
+	pop	eax
+	pop	edx
+	pop	ecx
+	pop	ebx
+	pop     ebp
+	ret
