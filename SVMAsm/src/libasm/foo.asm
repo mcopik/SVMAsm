@@ -1,5 +1,6 @@
 global findHighLow
 global updateErrorCache
+global updateAlpha
 segment .data
 fHigh:		dd	10000000.0
 fLow:		dd	-1000000.0
@@ -59,8 +60,9 @@ segment .text
 ;@param number of position in dest array
 ;@param cached kernel array offset in edx
 ;@param X[second] offset in ebx
+;@param offset in ebx of size
 ;;
-%macro getKernel 3
+%macro getKernel 4
 	add	eax,1
 	push	eax
 	mov	ecx,dword [edx+%2]	; cachedKernel
@@ -76,8 +78,8 @@ segment .text
 	fstp	dword [ebx+4*%1]
 	jne	%%finish
 	lea	esp,[esp-4]		; result
-	push	dword [ebx+32]		; number of features
-	mov	ecx,dword [ebx+32]	; number of features
+	push	dword [ebx+%4]		; number of features
+	mov	ecx,dword [ebx+%4]	; number of features
 	imul	ecx,eax			; x offset
 	imul	ecx,4
 	add	edi,ecx
@@ -412,15 +414,15 @@ errorLoop:
 	mov	eax,dword [edx]
 	sub	eax,dword [ebx+56]	; eax - iteration number
 	sub	eax,1
-	getKernel 0,48,48
-	getKernel 1,48,48
-	getKernel 2,48,48
-	getKernel 3,48,48
+	getKernel 0,48,48,32
+	getKernel 1,48,48,32
+	getKernel 2,48,48,32
+	getKernel 3,48,48,32
 	sub	eax,4			; decrement counter
-	getKernel 4,44,52
-	getKernel 5,44,52
-	getKernel 6,44,52
-	getKernel 7,44,52
+	getKernel 4,44,52,32
+	getKernel 5,44,52,32
+	getKernel 6,44,52,32
+	getKernel 7,44,52,32
 	sub	eax,3			; decrement counter
 errorLoopBody:
 	movups	xmm2,[ebx]		; high cache
@@ -503,14 +505,18 @@ updateAlpha:
 	add	esi,ecx
 	mov	eax,dword [esi]
 	mov	dword [ebx+32],eax	; alpha(low)
-	sub	esi,ecx
 
 	;compute eta
-	xor	ecx,ecx
 	mov	eax,dword [edx+4]	; iHigh
-	getKernel 0,48,12		; kernel(high,high)
-	getKernel 1,44,16		; kernel(low,low)
-	getKernel 2,44,12		; kernel(low,high)
+	mov	ecx,dword [edx+56]
+	mov	dword [ebx+20],ecx
+	sub	eax,1
+	getKernel 0,48,12,20		; kernel(high,high)
+	mov	eax,dword [edx+8]	; iLow
+	sub	eax,1
+	getKernel 1,44,16,20		; kernel(low,low)
+	sub	eax,1
+	getKernel 2,48,12,20		; kernel(high,low)
 	fld	dword [ebx]
 	fld	dword [ebx+4]
 	fld	dword [ebx+8]
@@ -526,22 +532,22 @@ updateAlpha:
 	
 	;compute alpha low boundaries
 	mov	edi,dword [edx+24]	; y array	
-	mov	ecx,dword [edx+8]
-	imul	ecx,4			; iLow offset
-	add	edi,ecx
-	fld	dword [edi]		; y(ilow)
-	sub	edi,ecx	
 	mov	ecx,dword [edx+4]
 	imul	ecx,4			; iHigh offset
 	add	edi,ecx
 	fld	dword [edi]		; y(iHigh)
-	sub	edi,ecx
+	sub	edi,ecx	
+	mov	ecx,dword [edx+8]
+	imul	ecx,4			; iLow offset
+	add	edi,ecx
+	fld	dword [edi]		; y(iLow)
+	fst	dword [ebx]		; save y(low)
 	fmul	ST0,ST1
 	fldz
 	fcomi	ST0,ST1
 	fstp	ST0
 	fstp	ST0
-	fstp	ST0
+	fstp	dword [ebx+4]		; save y(high)
 	jb	signPositive		; 0 < y(high)*y(low)?
 signNegative:
 	fld	dword [ebx+32]
@@ -551,7 +557,7 @@ signNegative:
 	fldz
 	fcomi	ST0,ST1
 	fstp	ST0			; remove zero
-	jbe	signNegAlphaDiffNeg	; 0 < alpha(low) - alpha(high)?
+	ja	signNegAlphaDiffNeg	; 0 > alpha(low) - alpha(high)?
 	;alpha diff positive
 	fstp	dword [ebx+20]		; save lower bound
 	fstp	ST0
@@ -575,18 +581,125 @@ signPositive:
 	jbe	signPosAlphaSumGreater
 	;alpha diff lower than cost
 	fstp	ST0
-	fstp	dword [ebx+28]		; save upper bound
+	fstp	dword [ebx+24]		; save upper bound
 	fstp	ST0
-	mov	dword [ebx+32],0	; save lower bound
+	mov	dword [ebx+20],0	; save lower bound
 	jmp	checkEta
 signPosAlphaSumGreater:
 	fsub	ST1,ST0			; alpha(low)+alpha(high)-C
-	fstp	dword [ebx+28]		; save upper bound
-	fsub	dword [ebx+32]		; save lower bound
+	fstp	dword [ebx+24]		; save upper bound
+	fstp	dword [ebx+20]		; save lower bound
 	fstp	ST0
 	jmp	checkEta
 	
 checkEta:
+	fld	dword [ebx]		;ST: y(low)
+	mov	edi,dword [edx+32]	;error array
+	mov	ecx,dword [edx+4]	;iHigh
+	imul	ecx,4
+	add	edi,ecx
+	fld	dword [edi]		;ST: error(high),y(low)
+	sub	edi,ecx
+	mov	ecx,dword [edx+8]
+	imul	ecx,4
+	add	edi,ecx
+	fld	dword [edi]		;ST: error(low),error(high),y(low)
+	fchs
+	fadd	ST0,ST1			;ST: error(high)-error(low),error(high),y(low)
+	fmul	ST0,ST2			;ST: y(low)*(error(high)-error(low)),error(high),y(low)
+	fld	dword [ebx+12]		;ST: eta,y(low)*(error(high)-error(low)),error(high),y(low)
+	fldz
+	fcomi	ST0,ST1
+	fstp	ST0
+	jae	etaNeg
+	;eta > 0!
+	fdiv	ST1,ST0			;ST: eta,y(low)*(error(high)-error(low))/eta,error(high),y(low)
+	fld	dword [ebx+32]		;ST: alpha(low), as above
+	fadd	ST0,ST2			;ST: new alpha(low), as above
+	fld	dword [ebx+20]		;ST: lower bound,new alpha(low), as above(4 values)
+	fcomi	ST0,ST1
+	fstp	ST0			;ST: new alpha(low), as above(4 values)
+	ja	belowLow
+	fld	dword [ebx+24]		;ST: upper bound,new alpha(low), as above(4 values)
+	fcomi	ST0,ST1
+	fstp	ST0			;ST: new alpha(low), as above(4 values)
+	jb	aboveHigh
+	fst	dword [esi]		; save alpha low
+	fstp	ST1
+	fstp	ST1
+	fstp	ST1			;ST: new alpha,y(low)
+	jmp	updateHigh
+belowLow:
+	mov	ecx,dword [ebx+20]
+	mov	dword [esi],ecx		; alpha(low) = lower bound
+	fstp	ST1
+	fstp	ST1
+	fstp	ST1			;ST: new alpha,y(low)
+	fstp	ST0
+	fld	dword [esi]
+	jmp	updateHigh
+aboveHigh:
+	mov	ecx,dword [ebx+24]
+	mov	dword [esi],ecx		; alpha(low) = upper bound
+	fstp	ST1
+	fstp	ST1
+	fstp	ST1			;ST: new alpha,y(low)
+	fstp	ST0
+	fld	dword [esi]
+	jmp	updateHigh
+etaNeg:	
+	;slope = y(low)*(error(high)-error(low))
+	fstp	ST0			; ST: slope,error(high),y(low)
+	fld	dword [ebx+24]		; ST: upper bound,as above
+	fld	dword [ebx+20]
+	fsub	ST1,ST0			
+	fstp	ST0			; ST: upper bound - lower bound,as above
+	fmul	ST0,ST1			; ST: delta,slope,as above(2 values)
+	fldz
+	fcomi	ST0,ST1
+	jb	deltaPos		; 0 < delta?
+	mov	ecx,dword [ebx+16]	
+	mov	dword [esi],ecx		; alpha(low) = alphaLowOld
+	fstp	ST0
+	fstp	ST0
+	fstp	ST0
+	fstp	ST0
+	jmp	alphaEnd		; no change in alpha(high)!
+deltaPos:
+	fstp	ST0			; ST: slope,as above(2 values)
+	fldz
+	fcomi	ST0,ST1
+	fstp	ST0
+	jb	slopePos		; 0 < slope?
+	; slope <= 0
+	fstp	ST0
+	fstp	ST0
+	fld	dword [ebx+20]		; ST: new alpha(low),y(low)
+	fst	dword [esi]		; alpha(low) = lower bound
+	jmp	updateHigh
+slopePos:
+	fstp	ST0
+	fstp	ST0
+	fld	dword [ebx+24]		; ST: new alpha(low),y(low)
+	fst	dword [esi]		; alpha(low) = upper bound
+	jmp	updateHigh
+updateHigh:
+	fchs
+	fld	dword [ebx+16]		; ST: old alpha,-new alpha,y(low)
+	fadd	ST0,ST1
+	fmul	ST0,ST2
+	fld	dword [ebx+4]		; ST: y(high),(old - new)*y(low),y(low)
+	fmul	ST0,ST1
+	mov	edi,dword [edx+28]	; alpha array	
+	mov	ecx,dword [edx+4]
+	imul	ecx,4			; iHigh offset
+	add	edi,ecx
+	fld	dword [edi]
+	fadd	ST0,ST1
+	fstp	dword [edi]		; y(iHigh) += (old - new)*y(low)*y(high)
+	fstp	ST0
+	fstp	ST0
+	fstp	ST0
 alphaEnd:	
 	mov	esp,[ebx+36]		;retrieve esp
 	lea	esp,[esp+40]		;free memory

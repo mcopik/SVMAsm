@@ -85,6 +85,8 @@ public:
 		assert(findHighLowAsm != nullptr);
 		threadFunction updateErrorCacheAsm = (threadFunction) dlsym(asmHandle, "updateErrorCache");
 		assert(findHighLowAsm != nullptr);
+		threadFunction updateAlphaAsm = (threadFunction) dlsym(asmHandle, "updateAlpha");
+		assert(findHighLowAsm != nullptr);
 		
 		
 		numberOfThreads = 2;
@@ -166,7 +168,21 @@ public:
 		//getfLow(fLow,iLow,threadsData);
 		alphaHighOld = model->alphas(iHigh);
 		alphaLowOld = model->alphas(iLow);
-		updateAlpha(iHigh,iLow);
+		//updateAlpha(iHigh,iLow);
+		//threadsAsmData[0].yArray = model->Y.vectorData(0);
+		//threadsAsmData[0].alphaArray = model->alphas.vectorData(0);
+		//threadsAsmData[0].errorArray = errorCache->vectorData(0);
+		for(int i = 0;i < numberOfThreads; ++i) {
+			threadsAsmData[i].iHigh = iHigh;
+			threadsAsmData[i].iLow = iLow;
+			threadsAsmData[i].cachedKernelHigh = (*cachedKernel)(iHigh);
+			threadsAsmData[i].cachedKernelLow = (*cachedKernel)(iLow);
+		}
+		//updateAlpha(iHigh,iLow);
+		(*updateAlphaAsm)((void*)&threadsAsmData[0]);
+		//threadsAsmData[0].yArray = model->Y.vectorData(threadDataSize*i);
+		//threadsAsmData[0].alphaArray = model->alphas.vectorData(threadDataSize*i);
+		//threadsAsmData[0].errorArray = errorCache->vectorData(threadDataSize*i);
 		std::cout << "alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
 		std::cout << "alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
 		std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
@@ -193,10 +209,8 @@ public:
 						(model->alphas(iHigh) - alphaHighOld);
 				threadsAsmData[i].errorUpdateLow = model->Y(iLow)*
 						(model->alphas(iLow) - alphaLowOld);
-				threadsAsmData[i].iHigh = iHigh;
-				threadsAsmData[i].iLow = iLow;
-				threadsAsmData[i].cachedKernelHigh = (*cachedKernel)(iHigh);
-				threadsAsmData[i].cachedKernelLow = (*cachedKernel)(iLow);
+				//threadsAsmData[i].cachedKernelHigh = (*cachedKernel)(iHigh);
+				//threadsAsmData[i].cachedKernelLow = (*cachedKernel)(iLow);
 			}
 			//for(int i = 0;i < numberOfThreads;++i) {
 			//	pthread_create(&(threadID[i]),NULL,(void* (*)(void*))updateErrorCache,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
@@ -236,9 +250,14 @@ public:
 					iLow = threadsAsmData[i].iLow+threadDataSize*i;
 				}
 			}
+			for(int i = 0;i < numberOfThreads; ++i) {
+				threadsAsmData[i].iHigh = iHigh;
+				threadsAsmData[i].iLow = iLow;
+				threadsAsmData[i].cachedKernelHigh = (*cachedKernel)(iHigh);
+				threadsAsmData[i].cachedKernelLow = (*cachedKernel)(iLow);
+			}
 			
-			/*
-			for(int i = 0;i < numberOfThreads;++i) {
+			/*for(int i = 0;i < numberOfThreads;++i) {
 				
 				pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//pthread_create(&(threadID[i]),NULL,(void* (*)(void*))findHighLow,(void*)(&threadsData[i]));//(void *(*)(void*))function,(void*)&threadsData[i]);
 				pthread_join(threadID[i],nullptr);//(void**)&ret[i]);
@@ -257,7 +276,27 @@ public:
 			fHigh = (*errorCache)(iHigh);
 			alphaHighOld = model->alphas(iHigh);
 			alphaLowOld = model->alphas(iLow);
+			(*updateAlphaAsm)((void*)&threadsAsmData[0]);
+			/*
 			updateAlpha(iHigh,iLow);
+			float newAlphaHigh = model->alphas(iHigh);
+			float newAlphaLow = model->alphas(iLow);
+			model->alphas(iHigh) = alphaHighOld;
+			model->alphas(iLow) = alphaLowOld;
+			if(std::abs(newAlphaHigh - model->alphas(iHigh)) >= 0.01 || std::abs(newAlphaLow - model->alphas(iLow)) >= 0.01){
+				std::cout << "nr " << nr_iter << " new low " << newAlphaLow << " new low2 " <<  model->alphas(iLow)
+					<< " new high " << newAlphaHigh << " new high2 " <<  model->alphas(iHigh) << std::endl;
+					std::cout << newAlphaLow << " " << model->alphas(iLow) << " " << std::endl;
+					std::cout << std::abs(newAlphaHigh - model->alphas(iHigh)) << " " << std::abs(newAlphaLow != model->alphas(iLow)) << std::endl;
+					
+					model->alphas(iHigh) = alphaHighOld;
+					model->alphas(iLow) = alphaLowOld;
+					//throw std::exception();
+					(*updateAlphaAsm)((void*)&threadsAsmData[0]);
+					
+					}*/
+			
+			
 			//std::cout << "fHigh " << fHigh << " fLow " << fLow << std::endl;
 			//std::cout << "iHigh " << iHigh << " alphaHigh " << alphaHighOld << " -> " << model->alphas(iHigh) << std::endl;
 			//std::cout << "iLow " << iLow << " alphaLow " << alphaLowOld << " -> " << model->alphas(iLow) << std::endl;
@@ -493,11 +532,15 @@ private:
 	 * @param iLow index of alphaLow
 	 */
 	void updateAlpha(int iHigh,int iLow) {
+		std::cout << "fHigh: " << (*errorCache)(iHigh) << " fLow: " << (*errorCache)(iLow) << std::endl;
+		std::cout << "alphaHigh: " << model->alphas(iHigh) << " alphaLow: " << model->alphas(iLow) << std::endl;
+		std::cout << "yHigh: " << model->Y(iHigh) << " yLow: " << model->Y(iLow) << std::endl;
 		//compute boundaries for alphaLow
 		dataType alphaLowLowerBound,alphaLowUpperBound;
 		dataType eta = computeKernel(iHigh,iHigh) + computeKernel(iLow,iLow)
 				- 2 * computeKernel(iHigh,iLow);
 		dataType oldAlphaLow = model->alphas(iLow);
+		std::cout << "eta " << eta <<  std::endl;
 		if(model->Y(iHigh)*model->Y(iLow) < 0) {
 			if(model->alphas(iLow)-model->alphas(iHigh) < 0) {
 				alphaLowLowerBound = 0;
@@ -518,6 +561,7 @@ private:
 				alphaLowUpperBound = C;
 			}
 		}
+		std::cout << "low bound: " << alphaLowLowerBound << " upper bound: " << alphaLowUpperBound << std::endl;
 		//compute alphaLow
 		if(eta > 0) {
 			model->alphas(iLow) += model->Y(iLow)*
@@ -538,16 +582,18 @@ private:
 					model->alphas(iLow) = alphaLowUpperBound;
 				}
 				else {
-					model->alphas(iLow) = alphaLowUpperBound;
+					model->alphas(iLow) = alphaLowLowerBound;
 				}
 			}
 			else {
 				model->alphas(iLow) = oldAlphaLow;
 			}
 		}
+		std::cout << "new alpha low " << model->alphas(iLow) << std::endl;
 		//compute alphaHigh
 		model->alphas(iHigh) += model->Y(iHigh)*model->Y(iLow)
 				*(oldAlphaLow - model->alphas(iLow));
+		std::cout << "new alpha high " << model->alphas(iHigh) << std::endl;
 	}
 	static void updateErrorCache(ParallelTrainData<inputType,dataType> * data) {
 		unsigned int size = data->trainDataSize;
