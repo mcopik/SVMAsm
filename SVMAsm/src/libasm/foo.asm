@@ -1,16 +1,15 @@
-extern _GLOBAL_OFFSET_TABLE_
-
-global findHighLow:function
+global findHighLow
+global updateErrorCache
 segment .data
-zeroConst:	dd	0
 fHigh:		dd	10000000.0
 fLow:		dd	-1000000.0
-iHigh:		dd	-1
-iLow:		dd	-1
-lowFlag		dd	0
-highFlag	dd	0
 segment .text
 
+;;
+;load value from array to FPU
+;@param pointer to array
+;@param position in array
+;;
 %macro	arrayToFPU 2
 	push	edx
 	mov	edx,%1
@@ -18,7 +17,12 @@ segment .text
 	pop	edx
 %endmacro
 
-; src dst number
+;;
+;load value from array
+;@param pointer to array
+;@param pointer to destination
+;@param position in array
+;;
 %macro	loadArrayPosition 3
 	push	edx
 	mov	edx,%1
@@ -26,10 +30,14 @@ segment .text
 	pop	edx
 %endmacro
 
-; ST0 - first operand
-; ST1 - second operand
-; ST3 - maximal error
-; eax = 1 when |ST0-ST1| <= error
+;;
+;macro evalutes expression:
+;|first-second| <= error
+;eax = 1 if true; otherwise eax = 0
+;@param first operand
+;@param second operand
+;@param error
+;;
 %macro equalsWithTolerance 3
 	fsub	%1,%2
 	fabs
@@ -45,55 +53,61 @@ segment .text
 	nop
 %endmacro
 
-; label nr label_jmp cachedKernelAdr XAdr offset_out
-%macro getKernel 5
-%1:
+;;
+;macro evalutes kernel
+;caching enabled
+;@param number of position in dest array
+;@param cached kernel array offset in edx
+;@param X[second] offset in ebx
+;;
+%macro getKernel 3
 	add	eax,1
 	push	eax
-	mov	ecx,dword [edx+%4]	; cachedKernelHigh
+	mov	ecx,dword [edx+%2]	; cachedKernel
 	imul	eax,4
 	add	eax,dword [edx+64]	; const offset
-	add	ecx,eax			; cachedKernelHigh[i]
+	add	ecx,eax			; cachedKernel[i]
 	pop	eax
 	fld	dword [ecx]
 	fld1
 	fchs
-	fcomi	ST0,ST1
+	fcomi	ST0,ST1			; cachedKernel == -1?
 	fstp	ST0
-	fstp	dword [ebx+4*%2]
-	jne	%3
+	fstp	dword [ebx+4*%1]
+	jne	%%finish
 	lea	esp,[esp-4]		; result
 	push	dword [ebx+32]		; number of features
 	mov	ecx,dword [ebx+32]	; number of features
 	imul	ecx,eax			; x offset
 	imul	ecx,4
-	;add	ecx,dword [edx+64]	; const offset
-	add	edi,ecx			; X[i]
-	push	edi
+	add	edi,ecx
+	push	edi			; X[i]
 	sub	edi,ecx
-	push	dword [ebx+%5]		; X[iHigh]
-	push	esp
+	push	dword [ebx+%3]		; X[iHigh]
+	push	esp			; structure address
 	call	computeLinearKernel
 	lea	esp,[esp+16]
 	push	eax
 	mov	eax,[esp+4]
-	mov	dword [ebx+4*%2],eax	; high kernel 0
+	mov	dword [ebx+4*%1],eax	; high kernel 0
 	pop	eax
 	push	eax
-	fld	dword [ebx+4*%2]
-	mov	ecx,dword [edx+%4]
+	fld	dword [ebx+4*%1]
+	mov	ecx,dword [edx+%2]
 	imul	eax,4
-	add	eax,dword [edx+64]	;const offset
+	add	eax,dword [edx+64]	; const offset
 	add	ecx,eax
 	fstp	dword [ecx]		; save cached kernel
 	pop	eax
 	lea	esp,[esp+4]
+%%finish:
+	nop
 %endmacro
 
-;	Input: ParallelAsmData struct
-;	Output: modifications in struct
-;	Finds High and Low alpha
-global findHighLow
+;;
+;finds iHigh and iLow in alpha array
+;@param ParallelAsmData structure
+;;
 findHighLow:
    	push    ebp	;save ebp
 	mov     ebp,esp	
@@ -122,9 +136,6 @@ LOOP:
 	mov	dword [ebx+4],0
 	mov	dword [ebx],0
 	
-	;only testAlpha0 should pass!
-	;jmp	alpha0
-	;jmp	alphaCost
 ;check if error < alpha < cost-error
 middle:	
 	clc
@@ -173,10 +184,8 @@ alpha0YPos:
 	
 ;check if cost-error <= alpha <= cost
 alphaCost:
-	;jmp	highCheck
 	fld	ST3			;stack: cost,alphas(i),y(i),error,cost
 	equalsWithTolerance ST0,ST1,ST3 ;check if |alphas(i)-cost| <= error
-	;mov	eax,1
 	cmp	eax,0
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
 	je	highCheck		;alphas(i) < cost-error
@@ -184,23 +193,14 @@ alphaCost:
 	fcomi	ST0,ST2
 	fstp	ST0			;stack: alphas(i),y(i),error,cost
 	
-	;fld	ST0
-	;fstp	dword [edx+4]
 	je	alphaCostYPos		;y(i) > 0
-	;jmp	alphaCostYPos
 ;if y(i) < 0 -> check iHigh
 alphaCostYNeg:
-	;mov	dword [edx+4],0
-	;fstsw	word [edx+4]
-	;fild	dword [edx+4]
-	;fld	ST4
-	;fstp	dword [edx+4]
 	mov	eax,1
 	mov	dword [ebx],eax		;check iHigh
 	jmp	highCheck
 ;if y(i) > 0 -> check iLow
 alphaCostYPos:
-	;fst	dword [edx+8]
 	mov	eax,1
 	mov	dword [ebx+4],eax	;check iLow
 	jmp	highCheck
@@ -260,11 +260,12 @@ end:
 	pop	ebx
 	pop     ebp
 	ret
-
-;	Input: Pointers to data,size
-;	Output: sum in eax
-;	Finds High and Low alpha
-global computeLinearKernel
+	
+;;
+;computes linear kernel
+;result in eax
+;@param pointer to structure: first,second,size,result
+;;
 computeLinearKernel:
    	push    ebp			;save ebp
 	mov     ebp,esp	
@@ -286,8 +287,6 @@ computeLinearKernel:
 	mov	ecx,dword [edx+8]	; get size
 	cmp	ecx,12			; check if size >= 12
 	jb	leftovers		; less than 12 elements
-	;mov	dword [edx+12],2
-	;jmp	computeKernelEnd
 loop:	
 	movups	xmm2,[esi]		;move 4 values from first_ptr etc.
 	movups	xmm3,[edi]		;move 4 values from second_ptr etc.
@@ -353,11 +352,11 @@ computeKernelEnd:
 	mov	esp,ebp
 	pop     ebp
 	ret
-	
-;	Input: Pointers to data,size
-;	Output: sum in eax
-;	Finds High and Low alpha
-global updateErrorCache
+
+;;
+;Function performs updating cached error.
+;@param pointer to ParallelAsmData structure
+;;
 updateErrorCache:
    	push    ebp			;save ebp
 	mov     ebp,esp	
@@ -368,7 +367,6 @@ updateErrorCache:
 	xor	eax,eax
 	finit
 	mov	edx,[ebp+8]		; structure
-	;mov	ebp,edx
 	lea	esp,[esp-68]		; 4 places for kernel High and 4 for Low
 	mov	ebx,esp			; stack pointer in ebx
 	mov	[ebx+64],esp		; save esp
@@ -405,35 +403,25 @@ updateErrorCache:
 	imul	ecx,dword [edx+12]	; threadID
 	add	edi,ecx			; X[threadDataSize*threadID]
 	mov	dword [ebx+60],edi	;
-	;sub	edi,ecx
-
 
 	mov	ecx,dword [ebx+56]	; counter - trainDataSize
 	cmp	ecx,4
 	jl	errorEnd
 	
-
 errorLoop:	
 	mov	eax,dword [edx]
 	sub	eax,dword [ebx+56]	; eax - iteration number
 	sub	eax,1
-	getKernel cacheHigh0,0,cacheHigh1,48,48
-	;add	eax,1
-	getKernel cacheHigh1,1,cacheHigh2,48,48
-	;add	eax,1
-	getKernel cacheHigh2,2,cacheHigh3,48,48
-	;add	eax,1
-	getKernel cacheHigh3,3,cacheLow0,48,48
-cacheLow0:
-	sub	eax,4
-	getKernel cacheLow0_,4,cacheLow1,44,52
-	;add	eax,1
-	getKernel cacheLow1,5,cacheLow2,44,52
-	;add	eax,1
-	getKernel cacheLow2,6,cacheLow3,44,52
-	;add	eax,1
-	getKernel cacheLow3,7,errorLoopBody,44,52
-	sub	eax,3
+	getKernel 0,48,48
+	getKernel 1,48,48
+	getKernel 2,48,48
+	getKernel 3,48,48
+	sub	eax,4			; decrement counter
+	getKernel 4,44,52
+	getKernel 5,44,52
+	getKernel 6,44,52
+	getKernel 7,44,52
+	sub	eax,3			; decrement counter
 errorLoopBody:
 	movups	xmm2,[ebx]		; high cache
 	movups	xmm4,[ebx+16]		; low cache	
@@ -455,7 +443,6 @@ errorLoopBody:
 	addps	xmm0,xmm1
 	addps	xmm0,xmm3
 	movups	[esi],xmm0		; save updated error
-	;add	edi,16
 	add	esi,16
 	mov	ecx,dword [ebx+56]	; counter
 	sub	ecx,4
