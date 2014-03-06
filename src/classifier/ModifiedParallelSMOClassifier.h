@@ -10,9 +10,19 @@
 
 #include <iostream>
 #include <algorithm>
+#include <cstddef>
+#include <ctime>
+#include <stdexcept>
+#include <random>
+#include <fstream>
+#include <cmath>
+/**
+ * *NIX
+ */
+#include <dlfcn.h>
 #include <pthread.h>
-#include <stddef.h>
-#include <time.h>
+
+
 #include "AbstractClassifier.h"
 #include "../data/TrainedModel.h"
 #include "../data/TrainData.h"
@@ -20,10 +30,6 @@
 #include "../data/ParallelAsmData.h"
 #include "../data/Vector.h"
 #include "../data/Matrix.h"
-#include <random>
-#include <cmath>
-#include <fstream>
-#include <cstdio>
 
 typedef void *(*threadFunction)(void*);//ParallelTrainData<float,float>*);
 template<class T,class U>
@@ -47,8 +53,8 @@ private:
 	using AbstractClassifier<inputType,dataType>::error;
 	using AbstractClassifier<inputType,dataType>::epsilon;
 	int numberOfThreads;
-	ParallelTrainData<inputType,dataType> * threadsData;
-	ParallelAsmData * threadsAsmData;
+	ParallelTrainData<inputType,dataType> * threadsData = nullptr;
+	ParallelAsmData * threadsAsmData = nullptr;
 	Matrix<dataType> * cachedKernel = nullptr;
 public:
 	using AbstractClassifier<T,U>::model;
@@ -79,8 +85,12 @@ public:
 			(*errorCache2)(i) = -1*train.Y(i);
 		}
 		void * asmHandle = dlopen("./libasm.so",RTLD_LAZY);
+		char * err = dlerror();
+		if(err != nullptr) {
+			throw std::runtime_error(err);
+		}
+		//should always be true
 		assert(asmHandle != nullptr);
-		dlerror();
 		threadFunction findHighLowAsm = (threadFunction) dlsym(asmHandle, "findHighLow");
 		assert(findHighLowAsm != nullptr);
 		threadFunction updateErrorCacheAsm = (threadFunction) dlsym(asmHandle, "updateErrorCache");
